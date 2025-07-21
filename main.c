@@ -6,8 +6,9 @@
 
 int main(int argc, char *argv[]) {
     Kernel *kernel;
-    kernel_read_input_file(argv[0],kernel);
-    kernel_schedule(kernel);
-    kernel_print_output_file(kernel);
+    kernel_read_input_file(argv[1],kernel);
+    //kernel_print(kernel);
+    //kernel_schedule(kernel);
+    //kernel_print_output_file(kernel);
     
 }

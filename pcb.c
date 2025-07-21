@@ -1,9 +1,6 @@
 #include "pcb.h"
-#define READY 1
-#define RUNNING 2
-#define READY 3
 
-typedef struct { 
+typedef struct pcb{ 
     int pid; 
     int process_len; 
     int remaining_time; 
@@ -14,7 +11,7 @@ typedef struct {
     pthread_mutex_t mutex; 
     pthread_cond_t cv; 
     pthread_t *thread_ids; 
-} PCB; 
+}; 
 
 PCB *process_create(int pid, int process_len, int prio, int num_threads, int start_time)
 {
@@ -40,20 +37,38 @@ PCB *process_create(int pid, int process_len, int prio, int num_threads, int sta
     }
     return p;
 }
-
+void print_process(PCB *p)
+{
+    if (!p) return;
+    printf("Process ID: %d\n", p->pid);
+    printf("Process Length: %d\n", p->process_len);
+    printf("Remaining Time: %d\n", p->remaining_time);
+    printf("Priority: %d\n", p->priority);
+    printf("Number of Threads: %d\n", p->num_threads);
+    printf("Start Time: %d\n", p->start_time);
+    printf("State: %d\n", p->state);
+}
 int get_tempo_execucao(PCB *p)
 {
-
+    return 0;
 }
 int get_prio(PCB *p)
 {
+        return 0;
+
 }
 int get_qtdThreads(PCB *p)
 {
+        return 0;
+
 }
 int meu_get_pid(PCB *p)
 {
+        return 0;
+
 }
 int get_tempo_chegada(PCB *p)
 {
+        return 0;
+
 }
