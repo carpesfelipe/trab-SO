@@ -1,25 +1,26 @@
 #include "pcb.h"
 #include "kernel.h"
-
-typedef PCB** List;
-typedef PCB** Queue;
+#include <unistd.h>
+typedef PCB **List;
+typedef PCB **Queue;
 struct kernel
 {
-    //verificar qual estrutura utilizar
+    // verificar qual estrutura utilizar
     List pcb_list;
     int generator_done;
     PCB *current_process;
-    int quantum;
-    char ** log_buffer;
+    double quantum;
+    char **log_buffer;
     SchedulerType scheduler_type;
-    //verificar qual estrutura utilizar
-    Queue runqueue;    
+    // verificar qual estrutura utilizar
+    Queue runqueue;
 };
 
 Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
 {
     Kernel *k = (Kernel *)calloc(1, sizeof(Kernel));
-    if (!k) {
+    if (!k)
+    {
         perror("Failed to allocate memory for Kernel");
         return NULL;
     }
@@ -33,37 +34,50 @@ Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
     return k;
 }
 
-void kernel_read_input_file(char * input_path,Kernel *k){
+void kernel_read_input_file(char *input_path, Kernel *k)
+{
     FILE *file = fopen(input_path, "r");
-    if (!file) {
+    if (!file)
+    {
         perror("Failed to open input file");
         return;
     }
     int nprocesses = 0;
     fscanf(file, "%d", &nprocesses);
-    k=kernel_create(0, QUANTUM); // Create kernel with default values
+    k = kernel_create(0, QUANTUM); // Create kernel with default values
     List process_list;
-    //process_list= list_create();
-    for(int i=0;i<nprocesses;i++){
+    // process_list= list_create();
+    for (int i = 0; i < nprocesses; i++)
+    {
         int process_len, prio, num_threads, start_time;
-        fscanf(file,"%d",&process_len);
-        fscanf(file,"%d",&prio);
-        fscanf(file,"%d",&num_threads);
-        fscanf(file,"%d",&start_time);
-        PCB *p=process_create(i, process_len, prio, num_threads, start_time);
+        fscanf(file, "%d", &process_len);
+        fscanf(file, "%d", &prio);
+        fscanf(file, "%d", &num_threads);
+        fscanf(file, "%d", &start_time);
+        PCB *p = process_create(i, process_len, prio, num_threads, start_time);
         print_process(p);
-        //kernel_add_process(k, p);
+        // TODO
+        // kernel_add_process(k, p);
     }
-    fscanf(file,"%d",&k->scheduler_type);
+    // kernel_sort_by_start_time(k)
+    //
+    fscanf(file, "%d", &k->scheduler_type);
 }
-void kernel_add_process(Kernel *k, PCB *p) {
-    if (!k || !p) return;
+void kernel_add_process(Kernel *k, PCB *p)
+{
+    if (!k || !p)
+        return;
     // Add process to the PCB list
-    //list_add(k->pcb_list, p);
+    // list_add(k->pcb_list, p);
+}
+void kernel_sort_by_start_time(Kernel *k)
+{
 }
 
-void kernel_print(Kernel *k) {
-    if (!k) return;
+void kernel_print(Kernel *k)
+{
+    if (!k)
+        return;
     printf("Kernel State:\n");
     printf("Scheduler Type: %d\n", k->scheduler_type);
     printf("Quantum: %d\n", k->quantum);
@@ -72,34 +86,56 @@ void kernel_print(Kernel *k) {
     //     PCB *p = list_get(k->pcb_list, i);
     //     print_process(p);
     // }
-
 }
-void kernel_print_output_file(Kernel *k){
-    
+void kernel_print_output_file(Kernel *k)
+{
 }
 
-void kernel_schedule(Kernel *k){
-    if(k->scheduler_type==RR){
-        round_robin_schedule(k);
-    }else if(k->scheduler_type==FCFS){
-        FCFS_schedule(k);
-    }else{
-        prio_schedule(k);
+void kernel_schedule(Kernel *k)
+{
+    if (k->scheduler_type == RR)
+    {
+        kernel_RR_schedule(k);
+    }
+    else if (k->scheduler_type == FCFS)
+    {
+        kernel_FCFS_schedule(k);
+    }
+    else
+    {
+        kernel_prio_schedule(k);
     }
 }
 
-void round_robin_schedule(Kernel *k) {
-    // Implement Round Robin scheduling logic
+void kernel_RR_schedule(Kernel *k)
+{
+    // Implement RR
 }
-void FCFS_schedule(Kernel *k) {
-    // Implement First-Come, First-Served scheduling logic
+void *routine(void * args){
+    pthread_mutex_lock(args);
+    usleep(500000);//500ms
+    printf("executando trhread");
 }
-void prio_schedule(Kernel *k) {
-    
+void kernel_FCFS_schedule(Kernel *k)
+{
+    int qtt_processes=get_size(k->pcb_list);
+    for(int i=0;i<qtt_processes;i++){
+        pthread_t * threads_ids=get_threads_ids(k->pcb_list[i]);
+        for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
+            pthread_create(&threads_ids[i],NULL,&routine,NULL);
+        }
+    }
+}
+
+
+void kernel_prio_schedule(Kernel *k)
+{
+    // Implement Priority Scheduling
 }
 void kernel_destroy(Kernel *k)
 {
-    if (k) {
+    if (k)
+    {
         // Free PCB list and other resources
         free(k->pcb_list);
         free(k->log_buffer);
