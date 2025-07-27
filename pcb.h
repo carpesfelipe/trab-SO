@@ -11,10 +11,12 @@
 typedef struct pcb PCB;
 typedef int ProcessState;
 PCB *process_create(int pid, int tempoExecucao, int prio, int qtdThreads, int tempoChegada);
+void process_run(PCB * p);
 void print_process(PCB *p);
 int get_tempo_execucao(PCB *p);
 int get_prio(PCB *p);
-int get_qtdThreads(PCB *p);
+int get_num_threads(PCB *p);
 int meu_get_pid(PCB *p);
 int get_tempo_chegada(PCB *p);
+pthread_t * get_threads_ids(PCB* p);
 

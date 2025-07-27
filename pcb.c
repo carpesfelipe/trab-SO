@@ -1,5 +1,5 @@
 #include "pcb.h"
-
+#include "tcb.h"
 typedef struct pcb{ 
     int pid; 
     int process_len; 
@@ -37,6 +37,7 @@ PCB *process_create(int pid, int process_len, int prio, int num_threads, int sta
     }
     return p;
 }
+
 void print_process(PCB *p)
 {
     if (!p) return;
@@ -48,27 +49,38 @@ void print_process(PCB *p)
     printf("Start Time: %d\n", p->start_time);
     printf("State: %d\n", p->state);
 }
-int get_tempo_execucao(PCB *p)
+void process_destroy(PCB *p)
 {
-    return 0;
+    if (!p) return;
+    pthread_mutex_destroy(&p->mutex);
+    pthread_cond_destroy(&p->cv);
+    free(p->thread_ids);
+    free(p);
 }
-int get_prio(PCB *p)
+int get_remaining_time(PCB *p)
 {
-        return 0;
+    return p->remaining_time;
+}
+int get_priority(PCB *p)
+{
+        return p->priority;
 
 }
-int get_qtdThreads(PCB *p)
+int get_num_threads(PCB *p)
 {
-        return 0;
+        return p->num_threads;
 
 }
-int meu_get_pid(PCB *p)
+int my_get_pid(PCB *p)
 {
-        return 0;
+        return p->pid;
 
 }
-int get_tempo_chegada(PCB *p)
+int get_start_time(PCB *p)
 {
-        return 0;
+        return p->start_time;
 
+}
+pthread_t * get_threads_ids(PCB* p){
+    return p->thread_ids;
 }
