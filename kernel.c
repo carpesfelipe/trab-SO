@@ -123,9 +123,14 @@ void kernel_FCFS_schedule(Kernel *k)
 {
     int qtt_processes=get_size(k->pcb_list);
     for(int i=0;i<qtt_processes;i++){
+        printf("Executando processo processo PID %d",my_get_pid(k->runqueue[i]));
+        k->log_buffer[i];
         pthread_t * threads_ids=get_threads_ids(k->pcb_list[i]);
         for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
             pthread_create(&threads_ids[i],NULL,&routine,NULL);
+        }
+        for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
+            pthread_join(&threads_ids[i],NULL);
         }
     }
 }
