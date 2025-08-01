@@ -7,7 +7,7 @@
 #include "queue.h"
 
 int main(int argc, char *argv[]) {
-    Kernel *kernel;
+    Kernel *kernel=kernel_create(FCFS,500);
     kernel_read_input_file(argv[1],kernel);
     //kernel_print(kernel);
     //kernel_schedule(kernel);

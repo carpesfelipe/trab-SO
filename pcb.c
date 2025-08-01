@@ -1,6 +1,6 @@
 #include "pcb.h"
 #include "tcb.h"
-typedef struct pcb{ 
+struct pcb{ 
     int pid; 
     int process_len; 
     int remaining_time; 

@@ -1,6 +1,7 @@
 #include "pcb.h"
 #include "kernel.h"
 #include <unistd.h>
+#include <time.h>
 typedef PCB **List;
 typedef PCB **Queue;
 struct kernel
@@ -9,7 +10,7 @@ struct kernel
     List pcb_list;
     int generator_done;
     PCB *current_process;
-    double quantum;
+    int quantum;
     char **log_buffer;
     SchedulerType scheduler_type;
     // verificar qual estrutura utilizar
@@ -44,8 +45,8 @@ void kernel_read_input_file(char *input_path, Kernel *k)
     }
     int nprocesses = 0;
     fscanf(file, "%d", &nprocesses);
-    k = kernel_create(0, QUANTUM); // Create kernel with default values
-    List process_list;
+    //TODO:Criar lista de processos
+    //List process_list;
     // process_list= list_create();
     for (int i = 0; i < nprocesses; i++)
     {
@@ -93,6 +94,7 @@ void kernel_print_output_file(Kernel *k)
 
 void kernel_schedule(Kernel *k)
 {
+    //int time=0;
     if (k->scheduler_type == RR)
     {
         kernel_RR_schedule(k);
@@ -118,19 +120,22 @@ void *routine(void * args){
     
     pthread_mutex_unlock(args);
     printf("executando thread");
+    return NULL;
 }
 void kernel_FCFS_schedule(Kernel *k)
 {
-    int qtt_processes=get_size(k->pcb_list);
+    //TODO: criar funcao de retornar tamanho da lista de processos
+    //int qtt_processes=get_size(k->pcb_list);
+    int qtt_processes=3;
     for(int i=0;i<qtt_processes;i++){
-        printf("Executando processo processo PID %d",my_get_pid(k->runqueue[i]));
-        k->log_buffer[i];
+        //printf("Executando processo processo PID %d",my_get_pid(k->runqueue[i]));
+        
         pthread_t * threads_ids=get_threads_ids(k->pcb_list[i]);
         for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
             pthread_create(&threads_ids[i],NULL,&routine,NULL);
         }
         for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
-            pthread_join(&threads_ids[i],NULL);
+            pthread_join(threads_ids[i],NULL);
         }
     }
 }

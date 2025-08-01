@@ -1,6 +1,6 @@
 #include "tcb.h"
 
-typedef struct tcb
+struct tcb
 {
     PCB *pcb;
     int thread_index;
