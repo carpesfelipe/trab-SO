@@ -7,6 +7,7 @@
 */
 
 #pragma once
+#include "pcb.h"
 
 typedef struct queue Queue;
 
@@ -23,10 +24,10 @@ int queue_empty(Queue *q);
 void queue_add(Queue *q, PCB *pcb);
 
 // remove um elemento da fila
-int queue_remove(Queue *q);
+PCB *queue_remove(Queue *q);
 
-// imprime os elementos da fila
+// imprime os elementos da fila //SE QUISER, AINDA PRECISA FUNCAO P PRINTAR PCB
 void queue_print(Queue *q);
 
-// destrói a fila e libera a memória alocada
+// destroi a fila e libera a memoria alocada (AINDA FALTA FUNCAO P LIBERAR OS PCB'S)
 void queue_destroy(Queue *q);
