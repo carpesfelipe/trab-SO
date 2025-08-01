@@ -114,7 +114,10 @@ void kernel_RR_schedule(Kernel *k)
 void *routine(void * args){
     pthread_mutex_lock(args);
     usleep(500000);//500ms
-    printf("executando trhread");
+    
+    
+    pthread_mutex_unlock(args);
+    printf("executando thread");
 }
 void kernel_FCFS_schedule(Kernel *k)
 {
