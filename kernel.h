@@ -18,3 +18,10 @@ Kernel *kernel_create(SchedulerType scheduler_type, int quantum);
 void kernel_add_process(Kernel *k, PCB *p);
 void kernel_destroy(Kernel *k);
 void kernel_sort_by_start_time();
+
+void kernel_run_simulation(Kernel *k);
+void kernel_printa_runqueue(Kernel *k);
+
+void kernel_print_log(Kernel *k);
+void add_log_entry(Kernel *k, const char *format, ...);
+void kernel_printa_runqueue(Kernel *k);

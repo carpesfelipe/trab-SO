@@ -21,8 +21,12 @@ Queue *queue_create(int s){
     q->size = s;
     q->first = 0;
     q->last = -1; // começa com -1 pq ainda nao tem nada preenchidos
-    q->data = (PCB **)calloc(1, sizeof(PCB*));
     q->nItens = 0;
+    q->data = (PCB **)calloc(s, sizeof(PCB*));
+    if (!q->data) {
+        free(q);
+        return NULL;
+    }
 
     return q;
 }
@@ -72,18 +76,13 @@ void queue_print(Queue *q) {
     for (int i = 0; i < q->nItens; i++)
     {
         printf("n[%d]: \n", indice_atual);
-        //SE QUISER, AINDA PRECISA FUNCAO P PRINTAR PCB
+        print_process(q->data[indice_atual]);
         indice_atual = (indice_atual + 1) % q->size; // Lógica circular com módulo
     }
 }
 
 void queue_destroy(Queue *q) {
     if (!q) return;
-
-    for (int i = 0; i < q->nItens; i++) {
-        //destruir cada PCB na fila
-
-    }
     
     free(q->data);
     free(q);

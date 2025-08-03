@@ -1,5 +1,9 @@
 #include "pcb.h"
 #include "tcb.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include "kernel.h"
 struct pcb{ 
     int pid; 
     int process_len; 
@@ -83,4 +87,27 @@ int get_start_time(PCB *p)
 }
 pthread_t * get_threads_ids(PCB* p){
     return p->thread_ids;
+}
+
+pthread_mutex_t * get_pcb_mutex(PCB *p) {
+    if (!p) {
+        fprintf(stderr, "PCB is NULL\n");
+        return NULL;
+    }
+    return &p->mutex;
+}
+
+int compare_pcb_start_time(const void *a, const void *b) {
+    // a e b são ponteiros para elementos do array, que são ponteiros para PCB
+    const PCB *pcb1 = *(const PCB **)a;
+    const PCB *pcb2 = *(const PCB **)b;
+    
+    // Compara pelo start_time
+    if (pcb1->start_time < pcb2->start_time) {
+        return -1;
+    } else if (pcb1->start_time > pcb2->start_time) {
+        return 1;
+    } else {
+        return 0; // Se os tempos de chegada são iguais
+    }
 }

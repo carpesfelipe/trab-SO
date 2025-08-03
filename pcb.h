@@ -21,3 +21,9 @@ int meu_get_pid(PCB *p);
 int get_tempo_chegada(PCB *p);
 pthread_t * get_threads_ids(PCB* p);
 
+int get_start_time(PCB *p);
+void process_destroy(PCB *p);
+
+int compare_pcb_start_time(const void *a, const void *b);
+pthread_mutex_t * get_pcb_mutex(PCB *p);
+
