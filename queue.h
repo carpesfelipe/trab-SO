@@ -26,6 +26,9 @@ void queue_add(Queue *q, PCB *pcb);
 // remove um elemento da fila
 PCB *queue_remove(Queue *q);
 
+// remove um elemento arbitrario da fila
+PCB *queue_remove_arbitrary(Queue *q, int k);
+
 // imprime os elementos da fila //SE QUISER, AINDA PRECISA FUNCAO P PRINTAR PCB
 void queue_print(Queue *q);
 

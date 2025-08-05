@@ -65,6 +65,16 @@ PCB *queue_remove(Queue *q){
     return temp;
 }
 
+PCB *queue_remove_arbitrary(Queue *q, int k){
+    if (queue_empty(q) || k<0 || k>=q->size){
+        printf("Impossível remover elemeto no idx: %d", k);
+    }
+
+    for(int i=k; i<q->size-1; i++ ){
+        PCB atual = 
+    }
+}
+
 void queue_print(Queue *q) {
     if(queue_empty(q)) {
         printf("Queue esta vazia.\n");
