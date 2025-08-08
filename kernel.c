@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 #include "queue.h"
 
 typedef PCB **List;
@@ -276,23 +276,31 @@ void kernel_run_simulation(Kernel *k){
     int current_time = 0;
     int process_index = 0;
     // int finished_processes = 0;
-
+    
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    int time_start=tv.tv_sec;
     while (process_index < k->nprocesses || !queue_empty(k->runqueue)) {
         // Itera sobre a lista de processos ordenada e adiciona os que chegaram à fila de prontos
+        printf("tempo antes do processo: %d\n",current_time);    
         while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= current_time) {
             queue_add(k->runqueue, k->pcb_list[process_index]);
             process_index++;
         }
-
+        
         // Se a fila de prontos não estiver vazia, o escalonador age
         if (!queue_empty(k->runqueue)) {
             kernel_schedule(k);
         }
-
+        
+        gettimeofday(&tv,NULL);
+        current_time=tv.tv_sec;
+        current_time=current_time-time_start;
+        printf("tempo atual: %d\n",current_time);    
         // SIMULA incremento do tempo
-        current_time++;
 
     }
+   
     kernel_print_log(k);
     printf("Escalonador terminou execução de todos processos\n");
 }

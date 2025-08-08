@@ -70,9 +70,9 @@ PCB *queue_remove_arbitrary(Queue *q, int k){
         printf("Impossível remover elemeto no idx: %d", k);
     }
 
-    for(int i=k; i<q->size-1; i++ ){
-        PCB atual = 
-    }
+    //for(int i=k; i<q->size-1; i++ ){
+    //    PCB atual = 
+    //}
 }
 
 void queue_print(Queue *q) {
