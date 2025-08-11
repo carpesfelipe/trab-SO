@@ -80,6 +80,7 @@ int my_get_pid(PCB *p)
         return p->pid;
 
 }
+
 int get_start_time(PCB *p)
 {
         return p->start_time;
@@ -96,7 +97,20 @@ pthread_mutex_t * get_pcb_mutex(PCB *p) {
     }
     return &p->mutex;
 }
-
+int get_process_len(PCB* p){
+    return p->process_len;
+}
+void pcb_change_state(PCB * p){
+    if(p->remaining_time<=0){
+        p->state=FINISHED;
+    }else{
+        p->state=RUNNING;
+    }
+}
+//subtrai uma parcela de tempo do tempo de execução de um processo
+void sub_remaining_time(PCB * p,int time){
+    p->remaining_time=p->remaining_time-time;
+}
 int compare_pcb_start_time(const void *a, const void *b) {
     // a e b são ponteiros para elementos do array, que são ponteiros para PCB
     const PCB *pcb1 = *(const PCB **)a;

@@ -16,3 +16,10 @@ TCB *tcb_create(PCB *pcb, int thread_index)
     tcb->thread_index = thread_index;
     return tcb;
 }
+
+PCB * tcb_get_process(TCB * tcb){
+    return tcb->pcb;
+}
+int tcb_get_thread_index(TCB * tcb){
+    return tcb->thread_index;
+}

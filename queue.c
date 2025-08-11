@@ -73,6 +73,7 @@ PCB *queue_remove_arbitrary(Queue *q, int k){
     //for(int i=k; i<q->size-1; i++ ){
     //    PCB atual = 
     //}
+    return NULL;
 }
 
 void queue_print(Queue *q) {

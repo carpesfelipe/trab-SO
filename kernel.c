@@ -2,6 +2,7 @@
 
 #include "pcb.h"
 #include "kernel.h"
+#include "tcb.h"
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -18,7 +19,7 @@ struct kernel
     // verificar qual estrutura utilizar
     PCB **pcb_list;
     int nprocesses;
-
+    
     int generator_done;
     PCB *current_process;
     int quantum;
@@ -88,7 +89,7 @@ void kernel_read_input_file(char *input_path, Kernel *k)
         fscanf(file, "%d", &num_threads);
         fscanf(file, "%d", &start_time);
 
-        k->pcb_list[i] = process_create(i, process_len, prio, num_threads, start_time);
+        k->pcb_list[i] = process_create(i+1, process_len, prio, num_threads, start_time);
         // print_process(k->pcb_list[i]);
     }
     kernel_sort_by_start_time(k);
@@ -165,12 +166,14 @@ void *routine(void * args){
         printf("No arguments provided to routine.\n");
         return NULL;
     }
-
-    pthread_mutex_lock(args);
-    usleep(500000);//500ms
-    
-    
-    pthread_mutex_unlock(args);
+    PCB * p=tcb_get_process((TCB*)args);
+    pthread_mutex_lock(get_pcb_mutex(p));
+    int time_of_cpu=get_process_len(p)/get_num_threads(p);
+    pcb_change_state(p);
+    usleep(time_of_cpu*1000);//500ms
+    sub_remaining_time(p,time_of_cpu);
+    printf("[PID %d]  thread %d executada faltam %dms \n ",my_get_pid(p),tcb_get_thread_index((TCB*)args),get_remaining_time(p));
+    pthread_mutex_unlock(get_pcb_mutex(p));
     // printf("executando thread");
     return NULL;
 }
@@ -209,7 +212,7 @@ void kernel_FCFS_schedule(Kernel *k){
         int num_threads = get_num_threads(current_process);
 
         // printf("[FCFS] Executando processo PID %d\n", pid+1);
-        add_log_entry(k, "[FCFS] Executando processo PID %d", pid + 1);
+        add_log_entry(k, "[FCFS] Executando processo PID %d", pid);
 
         // Aloca o array para os IDs das threads dentro do PCB.
         pthread_t *threads_ids = get_threads_ids(current_process); // Obtém o array de threads do PCB
@@ -226,8 +229,11 @@ void kernel_FCFS_schedule(Kernel *k){
         }
 
         // Cria as threads do processo
+      
+       
         for (int i = 0; i < num_threads; i++){
-            pthread_create(&threads_ids[i], NULL, &routine, (void *)mutex);
+            TCB* tcb=tcb_create(current_process,i);
+            pthread_create(&threads_ids[i], NULL, &routine, tcb);
         }
         
         // Espera todas as threads do processo terminarem.
@@ -235,6 +241,7 @@ void kernel_FCFS_schedule(Kernel *k){
             pthread_join(threads_ids[i], NULL);
             // printf("[FCFS] Thread %d do processo PID %d finalizada\n", i + 1, pid + 1);
         }
+        pthread_mutex_destroy(get_pcb_mutex(current_process));
 
         // printf("[FCFS] Processo PID %d finalizado\n", pid + 1);
         add_log_entry(k, "[FCFS] Processo PID %d finalizado", pid + 1);
@@ -273,35 +280,30 @@ void kernel_destroy(Kernel *k)
 }
 
 void kernel_run_simulation(Kernel *k){ 
-    int current_time = 0;
     int process_index = 0;
     // int finished_processes = 0;
     
-    struct timeval tv;
-    gettimeofday(&tv,NULL);
-    int time_start=tv.tv_sec;
+    struct timeval start_time;
+    gettimeofday(&start_time,NULL);
+    //Retirar esse 
     while (process_index < k->nprocesses || !queue_empty(k->runqueue)) {
-        // Itera sobre a lista de processos ordenada e adiciona os que chegaram à fila de prontos
-        printf("tempo antes do processo: %d\n",current_time);    
-        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= current_time) {
+        // Itera sobre a lista de processos ordenada e adiciona os que chegaram à fila de prontos   
+        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time)) {
+            printf("tempo atual: %d\n",get_current_time(start_time));    
             queue_add(k->runqueue, k->pcb_list[process_index]);
             process_index++;
+            if (!queue_empty(k->runqueue)) {
+                kernel_schedule(k);
+            }
+           
         }
         
-        // Se a fila de prontos não estiver vazia, o escalonador age
-        if (!queue_empty(k->runqueue)) {
-            kernel_schedule(k);
-        }
-        
-        gettimeofday(&tv,NULL);
-        current_time=tv.tv_sec;
-        current_time=current_time-time_start;
-        printf("tempo atual: %d\n",current_time);    
-        // SIMULA incremento do tempo
+        //kernel_print_log(k);
+         
+        //SIMULA incremento do tempo
 
     }
    
-    kernel_print_log(k);
     printf("Escalonador terminou execução de todos processos\n");
 }
 
@@ -344,4 +346,12 @@ void kernel_print_log(Kernel *k) {
     for (int i = 0; i < k->log_count; i++) {
         printf("%s\n", k->log_buffer[i]);
     }
+}
+
+int get_current_time(struct timeval start_time) {
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    long elapsed_time_ms = (current_time.tv_sec - start_time.tv_sec) * 1000 + 
+                           (current_time.tv_usec - start_time.tv_usec) / 1000;
+    return (int)elapsed_time_ms;
 }
