@@ -23,5 +23,5 @@ void kernel_run_simulation(Kernel *k);
 void kernel_printa_runqueue(Kernel *k);
 int get_current_time(struct timeval start_time);
 void kernel_print_log(Kernel *k);
-void add_log_entry(Kernel *k, const char *format, ...);
+void add_log_entry(Kernel *k, const char *message);
 void kernel_printa_runqueue(Kernel *k);

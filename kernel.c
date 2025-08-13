@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include "queue.h"
+#include <string.h>
 
 typedef PCB **List;
 // typedef PCB **Queue;
@@ -197,7 +198,8 @@ void *routine(void * args){
 //     }
 // }
 
-void kernel_FCFS_schedule(Kernel *k){    
+void kernel_FCFS_schedule(Kernel *k){
+    char buffer[200];
     // O escalonador deve atuar enquanto houver processos na fila de prontos
     while (!queue_empty(k->runqueue))
     {
@@ -212,7 +214,8 @@ void kernel_FCFS_schedule(Kernel *k){
         int num_threads = get_num_threads(current_process);
 
         // printf("[FCFS] Executando processo PID %d\n", pid+1);
-        add_log_entry(k, "[FCFS] Executando processo PID %d", pid);
+        snprintf(buffer, sizeof(buffer), "[FCFS] Executando processo PID %d", pid);
+        add_log_entry(k, buffer);
 
         // Aloca o array para os IDs das threads dentro do PCB.
         pthread_t *threads_ids = get_threads_ids(current_process); // Obtém o array de threads do PCB
@@ -244,7 +247,8 @@ void kernel_FCFS_schedule(Kernel *k){
         pthread_mutex_destroy(get_pcb_mutex(current_process));
 
         // printf("[FCFS] Processo PID %d finalizado\n", pid + 1);
-        add_log_entry(k, "[FCFS] Processo PID %d finalizado", pid + 1);
+        snprintf(buffer, sizeof(buffer), "[FCFS] Processo PID %d finalizado", pid);
+        add_log_entry(k, buffer);
 
         // pthread_mutex_unlock(mutex);
     }
@@ -298,7 +302,7 @@ void kernel_run_simulation(Kernel *k){
            
         }
         
-        //kernel_print_log(k);
+        // kernel_print_log(k);
          
         //SIMULA incremento do tempo
 
@@ -315,7 +319,7 @@ void kernel_printa_runqueue(Kernel *k) {
     }
 }
 
-void add_log_entry(Kernel *k, const char *format, ...) {
+void add_log_entry(Kernel *k, const char *message) {
     if (!k) return;
 
     // Redimensiona o buffer se estiver cheio
@@ -328,16 +332,9 @@ void add_log_entry(Kernel *k, const char *format, ...) {
         }
     }
 
-    // Formata a string de log e a adiciona ao buffer
-    va_list args;
-    va_start(args, format);
-    char *log_entry;
-    vasprintf(&log_entry, format, args);
-    va_end(args);
-
-    if (log_entry) {
-        k->log_buffer[k->log_count++] = log_entry;
-    }
+    //adiciona o log no buffer
+    k->log_buffer[k->log_count] = strdup(message);
+    k->log_count++;
 }
 
 void kernel_print_log(Kernel *k) {
