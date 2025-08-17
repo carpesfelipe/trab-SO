@@ -16,7 +16,9 @@ TCB *tcb_create(PCB *pcb, int thread_index)
     tcb->thread_index = thread_index;
     return tcb;
 }
-
+void tcb_destroy(TCB * tcb){
+    free(tcb);
+}
 PCB * tcb_get_process(TCB * tcb){
     return tcb->pcb;
 }

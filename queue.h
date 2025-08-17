@@ -32,5 +32,8 @@ PCB *queue_remove_arbitrary(Queue *q, int k);
 // imprime os elementos da fila //SE QUISER, AINDA PRECISA FUNCAO P PRINTAR PCB
 void queue_print(Queue *q);
 
+//retorna o primeiro elemento da fila
+PCB * queue_get_first(Queue* q);
+
 // destroi a fila e libera a memoria alocada (AINDA FALTA FUNCAO P LIBERAR OS PCB'S)
 void queue_destroy(Queue *q);

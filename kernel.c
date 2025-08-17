@@ -9,26 +9,25 @@
 #include <sys/time.h>
 #include "queue.h"
 
-typedef PCB **List;
 // typedef PCB **Queue;
-
+typedef struct
+{
+    TCB *tcb;
+    Kernel *k;
+} ThreadArgs;
 #define LOG_INITIAL_CAPACITY 15
 
 struct kernel
 {
-    // verificar qual estrutura utilizar
+    char **log_buffer;
     PCB **pcb_list;
     int nprocesses;
-    
     int generator_done;
     PCB *current_process;
     int quantum;
-    char **log_buffer;
     int log_count;
     int log_capacity;
-
     SchedulerType scheduler_type;
-    // verificar qual estrutura utilizar
     Queue *runqueue;
 };
 
@@ -40,11 +39,10 @@ Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
         perror("Failed to allocate memory for Kernel");
         return NULL;
     }
-    k->pcb_list = NULL; // Initialize the PCB list
+    k->pcb_list = NULL;
     k->generator_done = 0;
     k->current_process = NULL;
     k->quantum = quantum;
-    // k->log_buffer = NULL; // Initialize log buffer
     k->log_buffer = (char **)calloc(LOG_INITIAL_CAPACITY, sizeof(char *));
     k->log_count = 0;
     k->log_capacity = LOG_INITIAL_CAPACITY;
@@ -89,15 +87,9 @@ void kernel_read_input_file(char *input_path, Kernel *k)
         fscanf(file, "%d", &num_threads);
         fscanf(file, "%d", &start_time);
 
-        k->pcb_list[i] = process_create(i+1, process_len, prio, num_threads, start_time);
-        // print_process(k->pcb_list[i]);
+        k->pcb_list[i] = process_create(i + 1, process_len, prio, num_threads, start_time);
     }
     kernel_sort_by_start_time(k);
-
-    // printf("Processos ordenados pelo start time:\n");
-    // for(int i=0; i < nprocesses; i++) {
-    //     print_process(k->pcb_list[i]);
-    // }
 
     fscanf(file, "%d", &k->scheduler_type);
 
@@ -106,54 +98,11 @@ void kernel_read_input_file(char *input_path, Kernel *k)
     fclose(file);
 }
 
-// void kernel_add_process(Kernel *k, PCB *p)
-// {
-//     if (!k || !p)
-//         return;
-//     // Add process to the PCB list
-//     // list_add(k->pcb_list, p);
-// }
 void kernel_sort_by_start_time(Kernel *k)
 {
-    if (k && k->pcb_list && k->nprocesses > 1) {
+    if (k && k->pcb_list && k->nprocesses > 1)
+    {
         qsort(k->pcb_list, k->nprocesses, sizeof(PCB *), compare_pcb_start_time);
-    }
-}
-
-void kernel_print(Kernel *k)
-{
-    if (!k)
-        return;
-    printf("Kernel State:\n");
-    printf("Scheduler Type: %d\n", k->scheduler_type);
-    printf("Quantum: %d\n", k->quantum);
-    printf("Processes:\n");
-    // for (int i = 0; i < list_size(k->pcb_list); i++) {
-    //     PCB *p = list_get(k->pcb_list, i);
-    //     print_process(p);
-    // }
-}
-void kernel_print_output_file(Kernel *k)
-{
-}
-
-void kernel_schedule(Kernel *k)
-{
-    //int time=0;
-    if (k->scheduler_type == RR)
-    {
-        // printf("Scheduling using Round Robin\n");
-        kernel_RR_schedule(k);
-    }
-    else if (k->scheduler_type == FCFS)
-    {
-        // printf("Scheduling using First-Come, First-Served\n");
-        kernel_FCFS_schedule(k);
-    }
-    else
-    {
-        // printf("Scheduling using Priority Scheduling\n");
-        kernel_prio_schedule(k);
     }
 }
 
@@ -161,92 +110,80 @@ void kernel_RR_schedule(Kernel *k)
 {
     // Implement RR
 }
-void *routine(void * args){
-    if(!args) {
-        printf("No arguments provided to routine.\n");
-        return NULL;
-    }
-    PCB * p=tcb_get_process((TCB*)args);
-    pthread_mutex_lock(get_pcb_mutex(p));
-    int time_of_cpu=get_process_len(p)/get_num_threads(p);
-    pcb_change_state(p);
-    usleep(time_of_cpu*1000);//500ms
-    sub_remaining_time(p,time_of_cpu);
-    printf("[PID %d]  thread %d executada faltam %dms \n ",my_get_pid(p),tcb_get_thread_index((TCB*)args),get_remaining_time(p));
-    pthread_mutex_unlock(get_pcb_mutex(p));
-    // printf("executando thread");
-    return NULL;
-}
-// void kernel_FCFS_schedule(Kernel *k)
-// {
-//     printf("Iniciando escalonamento FCFS...\n");
-
-//     //TODO: criar funcao de retornar tamanho da lista de processos
-//     int qtt_processes=get_size(k->pcb_list);
-//     // int qtt_processes=3;
-//     for(int i=0;i<qtt_processes;i++){
-//         //printf("Executando processo processo PID %d",my_get_pid(k->runqueue[i]));
-        
-//         pthread_t * threads_ids=get_threads_ids(k->pcb_list[i]);
-//         for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
-//             pthread_create(&threads_ids[i],NULL,&routine,NULL);
-//         }
-//         for(int i=0;i<get_num_threads(k->pcb_list[i]);i++){
-//             pthread_join(threads_ids[i],NULL);
-//         }
-//     }
-// }
-
-void kernel_FCFS_schedule(Kernel *k){    
-    // O escalonador deve atuar enquanto houver processos na fila de prontos
-    while (!queue_empty(k->runqueue))
-    {
-        // pega o primeiro processo da fila de prontos
-        PCB *current_process = queue_remove(k->runqueue);
-        if (current_process == NULL) {
-            printf("Fila de prontos vazia. Encerrando escalonador.\n");
+void *routine(void *args)
+{
+    ThreadArgs *arg = (ThreadArgs *)args;
+    Kernel *k = arg->k;
+    TCB *tcb = arg->tcb;
+    free(arg);
+    PCB *p = tcb_get_process(tcb);
+    pthread_mutex_t *mutex = get_pcb_mutex(p);
+    pthread_cond_t *cv = pcb_get_cv(p);
+    //Executa até o estado do processo ser finished
+   while (1) {
+        pthread_mutex_lock(mutex);
+        //Se o processo não estiver no estado running ou finished, a thread deve se bloquear até estar no estado running
+        //A alteração do processo de RUNNING para READY só ocorre em kerne_priority_schedule
+        while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED) {
+            pthread_cond_wait(cv, mutex);
+        }
+        //se o processo finalizou, o mutex é liberado e "encerra" a thread
+        if (pcb_get_state(p) == FINISHED) {
+            pthread_mutex_unlock(mutex);
             break;
         }
 
-        int pid = my_get_pid(current_process);
-        int num_threads = get_num_threads(current_process);
-
-        // printf("[FCFS] Executando processo PID %d\n", pid+1);
-        add_log_entry(k, "[FCFS] Executando processo PID %d", pid);
-
-        // Aloca o array para os IDs das threads dentro do PCB.
-        pthread_t *threads_ids = get_threads_ids(current_process); // Obtém o array de threads do PCB
-        if (!threads_ids) {
-            perror("Failed to get thread_ids from PCB");
-            continue;
+        int remaining = get_remaining_time(p);
+        //se uma thread já alcançou o remaining_time==0 o estado ja foi alterado para finished e as threads não
+        //precisam mais olhar o resto, mas voltam para verificar o estado do processo antes de encerrar
+        if (remaining <= 0) {
+            pthread_mutex_unlock(mutex);
+            continue; 
         }
 
-        // Obtém o mutex do PCB para passar para as threads
-        pthread_mutex_t *mutex = get_pcb_mutex(current_process); 
-        if (!mutex) {
-            perror("Failed to get mutex from PCB");
-            continue;
+        int time_to_consume = k->quantum;
+        if (remaining < time_to_consume) {
+            time_to_consume = remaining;
         }
-
-        // Cria as threads do processo
-      
-       
-        for (int i = 0; i < num_threads; i++){
-            TCB* tcb=tcb_create(current_process,i);
-            pthread_create(&threads_ids[i], NULL, &routine, tcb);
-        }
+        sub_remaining_time(p, time_to_consume);
         
-        // Espera todas as threads do processo terminarem.
-        for (int i = 0; i < num_threads; i++){
-            pthread_join(threads_ids[i], NULL);
-            // printf("[FCFS] Thread %d do processo PID %d finalizada\n", i + 1, pid + 1);
+        printf("[PID %d] executou thread %d por %dms, faltam %dms\n", 
+               my_get_pid(p), 
+               tcb_get_thread_index(tcb), 
+               time_to_consume, 
+               get_remaining_time(p)); 
+
+        pthread_mutex_unlock(mutex);
+        usleep(time_to_consume * 1000); 
+        
+        pthread_mutex_lock(mutex);
+        if (get_remaining_time(p) <= 0 && pcb_get_state(p) != FINISHED) {
+            pcb_change_state(p, FINISHED);
+            add_log_entry(k, "[FCFS] Processo PID %d finalizado", my_get_pid(p));
+            pthread_cond_broadcast(cv);// Acorda outras threads para que elas vejam o FINISHED e saiam
         }
-        pthread_mutex_destroy(get_pcb_mutex(current_process));
+        pthread_mutex_unlock(mutex);
+    }
+    free(tcb);
+    return NULL;
+}
 
-        // printf("[FCFS] Processo PID %d finalizado\n", pid + 1);
-        add_log_entry(k, "[FCFS] Processo PID %d finalizado", pid + 1);
 
-        // pthread_mutex_unlock(mutex);
+void kernel_FCFS_schedule(Kernel *k) {
+    //se nao tem nenhum processo na CPU e a fila de prontos nao esta vazia
+    if (k->current_process == NULL && !queue_empty(k->runqueue)) {
+        
+        // Pega o próximo processo da fila
+        PCB *next_process = queue_remove(k->runqueue);
+        k->current_process = next_process;        
+        pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
+        pthread_cond_t *cv = pcb_get_cv(k->current_process);
+        //Uma vez que o processo está estado RUNNING ele não volta pra ready pois não há preempcao
+        pthread_mutex_lock(mutex);
+        pcb_change_state(k->current_process, RUNNING);
+        // Sinaliza para as threads do processo começarem a executar
+        pthread_cond_broadcast(cv); 
+        pthread_mutex_unlock(mutex);
     }
 }
 
@@ -258,15 +195,19 @@ void kernel_destroy(Kernel *k)
 {
     if (k)
     {
-        if (k->pcb_list) {
-            for (int i = 0; i < k->nprocesses; i++) {
+        if (k->pcb_list)
+        {
+            for (int i = 0; i < k->nprocesses; i++)
+            {
                 process_destroy(k->pcb_list[i]);
             }
             free(k->pcb_list);
         }
 
-        if (k->log_buffer) {
-            for (int i = 0; i < k->log_count; i++) {
+        if (k->log_buffer)
+        {
+            for (int i = 0; i < k->log_count; i++)
+            {
                 free(k->log_buffer[i]);
             }
             free(k->log_buffer);
@@ -279,50 +220,91 @@ void kernel_destroy(Kernel *k)
     }
 }
 
-void kernel_run_simulation(Kernel *k){ 
+void kernel_run_simulation(Kernel *k)
+{
     int process_index = 0;
-    // int finished_processes = 0;
-    
+    int finished_processes = 0;
     struct timeval start_time;
-    gettimeofday(&start_time,NULL);
-    //Retirar esse 
-    while (process_index < k->nprocesses || !queue_empty(k->runqueue)) {
-        // Itera sobre a lista de processos ordenada e adiciona os que chegaram à fila de prontos   
-        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time)) {
-            printf("tempo atual: %d\n",get_current_time(start_time));    
-            queue_add(k->runqueue, k->pcb_list[process_index]);
-            process_index++;
-            if (!queue_empty(k->runqueue)) {
-                kernel_schedule(k);
-            }
-           
+    gettimeofday(&start_time, NULL);
+    //todas as threads são criadas mas só executam quando sinalizado pelo escalonador
+    for (int i = 0; i < k->nprocesses; i++)
+    {
+        PCB *p = k->pcb_list[i];
+        int num_threads = get_num_threads(p);
+        pthread_t *threads_ids = get_threads_ids(p);
+        for (int j = 0; j < num_threads; j++)
+        {
+            ThreadArgs *args = calloc(1, sizeof(ThreadArgs));
+            args->k = k;
+            args->tcb = tcb_create(p, j);
+            pthread_create(&threads_ids[j], NULL, &routine, args);
         }
-        
-        //kernel_print_log(k);
-         
-        //SIMULA incremento do tempo
-
     }
-   
+
+    //Enquanto todos os processos não estiverem no estaod finalizado
+    while (finished_processes < k->nprocesses) {
+        //adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e 
+        //o tempo alcançou o start_time do processo
+        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time)) {
+            PCB *p = k->pcb_list[process_index];
+            queue_add(k->runqueue, p);
+            process_index++;
+        }
+
+        //verifica se o processo atual terminou
+        if (k->current_process != NULL && pcb_get_state(k->current_process) == FINISHED) {
+            k->current_process = NULL; 
+            finished_processes++;
+        }
+
+        if (k->scheduler_type == FCFS) {
+            kernel_FCFS_schedule(k);
+        } else if (k->scheduler_type == RR) {
+            // kernel_RR_schedule(k);
+        } else {
+            // kernel_prio_schedule(k);
+        }
+        //Simula a passagem de tempo para que o loop não ocorra várias vezes sem acontecer nada
+        usleep(10000); 
+    }
+    // Espera todas as threads terminarem antes de sair
+    for (int i = 0; i < k->nprocesses; i++) {
+        PCB* p = k->pcb_list[i];
+        int num_threads = get_num_threads(p);
+        pthread_t* threads_ids = get_threads_ids(p);
+        for (int j = 0; j < num_threads; j++) {
+            pthread_join(threads_ids[j], NULL);
+        }
+    }
+    kernel_print_log(k);
+
     printf("Escalonador terminou execução de todos processos\n");
 }
 
-void kernel_printa_runqueue(Kernel *k) {
-    if (k && k->runqueue) {
+void kernel_printa_runqueue(Kernel *k)
+{
+    if (k && k->runqueue)
+    {
         queue_print(k->runqueue);
-    } else {
+    }
+    else
+    {
         printf("Runqueue is not initialized.\n");
     }
 }
 
-void add_log_entry(Kernel *k, const char *format, ...) {
-    if (!k) return;
+void add_log_entry(Kernel *k, const char *format, ...)
+{
+    if (!k)
+        return;
 
     // Redimensiona o buffer se estiver cheio
-    if (k->log_count >= k->log_capacity) {
+    if (k->log_count >= k->log_capacity)
+    {
         k->log_capacity *= 2;
         k->log_buffer = (char **)realloc(k->log_buffer, k->log_capacity * sizeof(char *));
-        if (!k->log_buffer) {
+        if (!k->log_buffer)
+        {
             perror("Failed to reallocate log buffer");
             exit(EXIT_FAILURE);
         }
@@ -335,23 +317,28 @@ void add_log_entry(Kernel *k, const char *format, ...) {
     vasprintf(&log_entry, format, args);
     va_end(args);
 
-    if (log_entry) {
+    if (log_entry)
+    {
         k->log_buffer[k->log_count++] = log_entry;
     }
 }
 
-void kernel_print_log(Kernel *k) {
-    if (!k || !k->log_buffer) return;
+void kernel_print_log(Kernel *k)
+{
+    if (!k || !k->log_buffer)
+        return;
 
-    for (int i = 0; i < k->log_count; i++) {
+    for (int i = 0; i < k->log_count; i++)
+    {
         printf("%s\n", k->log_buffer[i]);
     }
 }
 
-int get_current_time(struct timeval start_time) {
+int get_current_time(struct timeval start_time)
+{
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    long elapsed_time_ms = (current_time.tv_sec - start_time.tv_sec) * 1000 + 
+    long elapsed_time_ms = (current_time.tv_sec - start_time.tv_sec) * 1000 +
                            (current_time.tv_usec - start_time.tv_usec) / 1000;
     return (int)elapsed_time_ms;
 }

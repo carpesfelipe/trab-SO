@@ -91,7 +91,9 @@ void queue_print(Queue *q) {
         indice_atual = (indice_atual + 1) % q->size; // Lógica circular com módulo
     }
 }
-
+PCB * queue_get_first(Queue* q){
+    return q->data[q->first];
+}
 void queue_destroy(Queue *q) {
     if (!q) return;
     

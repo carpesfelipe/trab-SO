@@ -12,7 +12,9 @@ struct pcb{
     int num_threads; 
     int start_time; 
     ProcessState state; 
-    pthread_mutex_t mutex; 
+    //mutex exclusivo para controlar acesso concorrente às suas variáveis internas
+    pthread_mutex_t mutex;
+    //variável de condição que será utilizada para sinalizar às threads quando elas podem executar 
     pthread_cond_t cv; 
     pthread_t *thread_ids; 
 }; 
@@ -100,12 +102,11 @@ pthread_mutex_t * get_pcb_mutex(PCB *p) {
 int get_process_len(PCB* p){
     return p->process_len;
 }
-void pcb_change_state(PCB * p){
-    if(p->remaining_time<=0){
-        p->state=FINISHED;
-    }else{
-        p->state=RUNNING;
-    }
+void pcb_change_state(PCB * p, ProcessState state){
+    p->state=state;
+}
+int pcb_get_state(PCB * p){
+    return p->state;
 }
 //subtrai uma parcela de tempo do tempo de execução de um processo
 void sub_remaining_time(PCB * p,int time){
@@ -124,4 +125,8 @@ int compare_pcb_start_time(const void *a, const void *b) {
     } else {
         return 0; // Se os tempos de chegada são iguais
     }
+}
+
+pthread_cond_t *pcb_get_cv(PCB * p){
+    return &(p->cv);
 }

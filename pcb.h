@@ -14,6 +14,7 @@ PCB *process_create(int pid, int tempoExecucao, int prio, int qtdThreads, int te
 void process_run(PCB * p);
 int my_get_pid(PCB * p);
 void print_process(PCB *p);
+int pcb_get_state(PCB * p);
 int get_remaining_time(PCB *p);
 int get_process_len(PCB* p);
 int get_prio(PCB *p);
@@ -22,7 +23,8 @@ int get_start_time(PCB *p);
 pthread_t * get_threads_ids(PCB* p);
 void process_destroy(PCB *p);
 void sub_remaining_time(PCB * p,int time);
-void pcb_change_state(PCB * p);
+void pcb_change_state(PCB * p,ProcessState state);
 int compare_pcb_start_time(const void *a, const void *b);
+pthread_cond_t *pcb_get_cv(PCB * p);
 pthread_mutex_t * get_pcb_mutex(PCB *p);
 
