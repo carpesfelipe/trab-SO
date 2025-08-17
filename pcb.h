@@ -17,7 +17,7 @@ void print_process(PCB *p);
 int pcb_get_state(PCB * p);
 int get_remaining_time(PCB *p);
 int get_process_len(PCB* p);
-int get_prio(PCB *p);
+int get_priority(PCB *p);
 int get_num_threads(PCB *p);
 int get_start_time(PCB *p);
 pthread_t * get_threads_ids(PCB* p);
