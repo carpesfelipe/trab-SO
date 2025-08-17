@@ -126,7 +126,18 @@ int compare_pcb_start_time(const void *a, const void *b) {
         return 0; // Se os tempos de chegada são iguais
     }
 }
-
+//Verifica se um processo tem mais prioridade sobre o outro utilizando como criterio de desempate o tempo de chegada
+int is_priority_p1_over_p2(PCB * p1,PCB * p2 ){
+    if(p1->priority<p2->priority){
+        return 1;
+    }else if(p2->priority==p1->priority){
+        //se retornar negativo, quer dizer que o processo p1 chegou primeiro que o processo p2
+        if(compare_pcb_start_time(&p1,&p2)<0){
+            return 1;
+        }
+    }
+    return 0;
+}
 pthread_cond_t *pcb_get_cv(PCB * p){
     return &(p->cv);
 }

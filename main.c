@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     //processos criados e inicializados
     kernel_read_input_file(argv[1],kernel);
 
-    // Loop para simular o tempo e mover os processos para a runqueue
+    //Loop para simular o tempo e mover os processos para a runqueue
     kernel_run_simulation(kernel);
 
     // kernel_schedule(kernel);
