@@ -35,6 +35,7 @@ void queue_print(Queue *q);
 //retorna o primeiro elemento da fila
 PCB * queue_get_first(Queue* q);
 
+//retorna o menor elemento, caso o remove=0 e remove o item da fila caso contrario
 PCB * queue_remove_min(Queue * q,int remove);
 // destroi a fila e libera a memoria alocada (AINDA FALTA FUNCAO P LIBERAR OS PCB'S)
 void queue_destroy(Queue *q);

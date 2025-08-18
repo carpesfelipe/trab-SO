@@ -118,20 +118,21 @@ void queue_destroy(Queue *q)
     free(q);
 }
 
+
 PCB *queue_remove_min(Queue *q, int remove)
 {
     if (queue_empty(q))
     {
         return NULL;
     }
+
     int min_index = q->first;
-    int current_idx = q->first;
-    PCB *min_pcb = q->data[current_idx];
+    PCB *min_pcb = q->data[q->first];
     int min_priority = get_priority(min_pcb);
 
     for (int i = 1; i < q->nItens; i++)
     {
-        current_idx = (q->first + i) % q->size;
+        int current_idx = (q->first + i) % q->size;
         PCB *current_pcb = q->data[current_idx];
         int current_priority = get_priority(current_pcb);
 
@@ -139,15 +140,17 @@ PCB *queue_remove_min(Queue *q, int remove)
         {
             min_priority = current_priority;
             min_pcb = current_pcb;
+            min_index = current_idx;
         }
     }
+
+    
     if (!remove)
     {
         return min_pcb;
     }
-    else
+    else 
     {
-        PCB *min_pcb_to_return = q->data[min_index];
         int current = min_index;
         while (current != q->last)
         {
@@ -155,9 +158,10 @@ PCB *queue_remove_min(Queue *q, int remove)
             q->data[current] = q->data[next];
             current = next;
         }
+
         q->last = (q->last - 1 + q->size) % q->size;
         q->nItens--;
 
-        return min_pcb_to_return;
+        return min_pcb;
     }
 }

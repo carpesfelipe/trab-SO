@@ -66,6 +66,7 @@ void process_destroy(PCB *p)
 int get_remaining_time(PCB *p)
 {
     return p->remaining_time;
+    
 }
 int get_priority(PCB *p)
 {
