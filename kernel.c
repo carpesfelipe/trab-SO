@@ -125,12 +125,14 @@ void *routine(void *args)
     while (1)
     {
         pthread_mutex_lock(mutex);
-        // Se o processo não estiver no estado running ou finished, a thread deve se bloquear enquanto estiver no estado READY
-        
-        while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
+        // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
+        //a thread deve se bloquear 
+         while (pcb_get_state(p) != FINISHED &&
+        (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
         {
             pthread_cond_wait(cv, mutex);
         }
+
         // se o processo finalizou, o mutex é liberado e encerra a thread/processo
         if (pcb_get_state(p) == FINISHED)
         {
@@ -148,11 +150,11 @@ void *routine(void *args)
         }
         sub_remaining_time(p, time_to_each_thread);
         //verificacao se cada thread esta executando como uma entidade própria
-        printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-            my_get_pid(p),
-            tcb_get_thread_index(tcb),
-            time_to_each_thread,
-            get_remaining_time(p));
+        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
+        //     my_get_pid(p),
+        //     tcb_get_thread_index(tcb),
+        //     time_to_each_thread,
+        //     get_remaining_time(p));
 
         pthread_mutex_unlock(mutex);
         usleep(time_to_each_thread * 1000);
@@ -179,6 +181,14 @@ void *routine(void *args)
             //pois o processo ja executou todas as suas threads
             pthread_cond_broadcast(cv);
             pid=my_get_pid(p);
+        }else if (pcb_get_state(p) == RUNNING) 
+        {
+            // Calcula o índice da próxima thread
+            int num_threads = get_num_threads(p);
+            int next_thread_index = (pcb_get_active_thread_index(p) + 1) % num_threads;
+            pcb_set_active_thread_index(p, next_thread_index);
+            //Acorda as outras threads para que a próxima na fila possa executar
+            pthread_cond_broadcast(cv);
         }
         pthread_mutex_unlock(mutex);
         if(pid!=-1){
@@ -196,14 +206,16 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
     if (k->current_process != NULL && get_current_time(*slice_time) >= QUANTUM)
     {
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
+        pthread_cond_t *cv = pcb_get_cv(k->current_process);
         // processo que está na CPU é preemptado e adicionado ao final da fila de prontos caso ainda haja remaining_time
         pthread_mutex_lock(mutex);
         if ((pcb_get_state(k->current_process) == RUNNING) && get_remaining_time(k->current_process) > 0)
         {
             pcb_change_state(k->current_process, READY);
             queue_add(k->runqueue, k->current_process);
-            // CPU fica vazia
             k->current_process = NULL;
+            pthread_cond_broadcast(cv);
+            // CPU fica vazia
         }
         pthread_mutex_unlock(mutex);
         
@@ -230,7 +242,7 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
 void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 {
     // se nao tem nenhum processo na CPU e a fila de prontos nao esta vazia
-    if (k->current_process == NULL && !queue_empty(k->runqueue))
+    if (k->current_process == NULL && !queue_empty(k->runqueue) && get_current_time(*slice_time))
     {
 
         // Pega o próximo processo da fila
@@ -257,7 +269,7 @@ void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
             pthread_mutex_t* mutex=get_pcb_mutex(k->current_process);
             
             //Verifica se o processo tem maior prioridade e se ele ainda possui remaining_time
-           
+            
             pthread_mutex_lock(mutex);
             if(pcb_get_state(k->current_process)==RUNNING && get_remaining_time(k->current_process) > 0){
              
@@ -280,7 +292,7 @@ void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
         pthread_cond_t *cv = pcb_get_cv(k->current_process);
         // Uma vez que o processo está estado RUNNING ele não volta pra ready pois não há preempcao
-        add_log_entry(k, "[PRIORITY] Executando processo PID %d com  prioridade %d", my_get_pid(next_process),get_priority(next_process));
+        add_log_entry(k, "[PRIORITY] Executando processo PID %d prioridade %d", my_get_pid(next_process),get_priority(next_process));
         pthread_mutex_lock(mutex);
         pcb_change_state(k->current_process, RUNNING);
         // Sinaliza para as threads do processo começarem a executar

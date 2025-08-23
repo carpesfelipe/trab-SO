@@ -28,3 +28,5 @@ int compare_pcb_start_time(const void *a, const void *b);
 pthread_cond_t *pcb_get_cv(PCB * p);
 pthread_mutex_t * get_pcb_mutex(PCB *p);
 int is_priority_p1_over_p2(PCB * p1,PCB * p2 );
+int pcb_get_active_thread_index(PCB* p);
+void pcb_set_active_thread_index(PCB* p, int index);

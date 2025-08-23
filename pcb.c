@@ -11,6 +11,7 @@ struct pcb{
     int priority; 
     int num_threads; 
     int start_time; 
+    int active_thread;
     ProcessState state; 
     //mutex exclusivo para controlar acesso concorrente às suas variáveis internas
     pthread_mutex_t mutex;
@@ -31,6 +32,7 @@ PCB *process_create(int pid, int process_len, int prio, int num_threads, int sta
     p->remaining_time = process_len;
     p->priority = prio;
     p->num_threads = num_threads;
+    p->active_thread=0;
     p->start_time = start_time;
     p->state = READY; // Initial state
     pthread_mutex_init(&p->mutex, NULL);
@@ -108,6 +110,14 @@ void pcb_change_state(PCB * p, ProcessState state){
 }
 int pcb_get_state(PCB * p){
     return p->state;
+}
+
+int pcb_get_active_thread_index(PCB* p) {
+    return p->active_thread;
+}
+
+void pcb_set_active_thread_index(PCB* p, int index) {
+    p->active_thread= index;
 }
 //subtrai uma parcela de tempo do tempo de execução de um processo
 void sub_remaining_time(PCB * p,int time){
