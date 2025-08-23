@@ -39,3 +39,7 @@ PCB * queue_get_first(Queue* q);
 PCB * queue_remove_min(Queue * q,int remove);
 // destroi a fila e libera a memoria alocada (AINDA FALTA FUNCAO P LIBERAR OS PCB'S)
 void queue_destroy(Queue *q);
+
+PCB *queue_peek(Queue *q);
+
+int queue_size(Queue *q);

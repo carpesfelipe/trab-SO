@@ -165,3 +165,16 @@ PCB *queue_remove_min(Queue *q, int remove)
         return min_pcb;
     }
 }
+
+//queue peek (para o primeiro elemento da fila)
+PCB *queue_peek(Queue *q) {
+    if (queue_empty(q)) {
+        return NULL;
+    }
+
+    return q->data[q->first];
+}
+
+int queue_size(Queue *q) {
+    return q->nItens;
+}
