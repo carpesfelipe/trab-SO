@@ -138,24 +138,24 @@ void *routine(void *args)
             break;
         }
 
-        int remaining = get_remaining_time(p);
-        int time_of_CPU = QUANTUM;
+        int time_to_each_thread = get_process_len(p)/get_num_threads(p);
+        
         //Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
         //se não subtraimos um quantum
-        if (remaining < time_of_CPU)
+        if (time_to_each_thread > QUANTUM)
         {
-            time_of_CPU = remaining;
+            time_to_each_thread = QUANTUM;
         }
-        sub_remaining_time(p, time_of_CPU);
+        sub_remaining_time(p, time_to_each_thread);
         //verificacao se cada thread esta executando como uma entidade própria
-        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-        //     my_get_pid(p),
-        //     tcb_get_thread_index(tcb),
-        //     time_of_CPU,
-        //     get_remaining_time(p));
+        printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
+            my_get_pid(p),
+            tcb_get_thread_index(tcb),
+            time_to_each_thread,
+            get_remaining_time(p));
 
         pthread_mutex_unlock(mutex);
-        usleep(time_of_CPU * 1000);
+        usleep(time_to_each_thread * 1000);
 
         pthread_mutex_lock(mutex);
         char out[10];
