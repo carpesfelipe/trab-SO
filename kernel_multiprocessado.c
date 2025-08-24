@@ -246,16 +246,16 @@ void *multi_routine(void *args)
 
 void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 {
-     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é válido.
+     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é valido
     if (!queue_empty(k->runqueue) && multi_get_current_time(*slice_time))
     {
-        // Pega o próximo processo da fila sem removê-lo.
+        // Pega o próximo processo da fila sem remover
         PCB *next_process = queue_peek(k->runqueue);
         
         // Verifica se há CPUs livres para alocar este processo.
         int allocated_cpus = 0;
         for (int i = 0; i < 2; i++) {
-            // Apenas aloca o processo se a CPU estiver livre (ponteiro é NULL)
+            // Apenas aloca o processo se a CPU estiver livre
             if (k->current_process[i] == NULL) {
                 if(allocated_cpus == 0 || queue_size(k->runqueue) == 1)
                 {
@@ -275,7 +275,6 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
             pthread_mutex_t *mutex = get_pcb_mutex(next_process);
             pthread_cond_t *cv = pcb_get_cv(next_process);
             
-            // Assegure que as threads estão esperando pelo broadcast
             pthread_mutex_lock(mutex);
             pcb_change_state(next_process, RUNNING);
             pthread_cond_broadcast(cv);
