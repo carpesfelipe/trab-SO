@@ -125,7 +125,7 @@ void *routine(void *args)
     while (1)
     {
         pthread_mutex_lock(mutex);
-        // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
+        //Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
         //a thread deve se bloquear 
          while (pcb_get_state(p) != FINISHED &&
         (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
@@ -133,7 +133,7 @@ void *routine(void *args)
             pthread_cond_wait(cv, mutex);
         }
 
-        // se o processo finalizou, o mutex é liberado e encerra a thread/processo
+        //se o processo finalizou, o mutex é liberado e encerra a thread/processo
         if (pcb_get_state(p) == FINISHED)
         {
             pthread_mutex_unlock(mutex);
@@ -202,7 +202,6 @@ void *routine(void *args)
 void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
 {
     //se a CPU não está vazia e o processo que está lá ultrapassou o quantum, o processo é preemptado
-
     if (k->current_process != NULL && get_current_time(*slice_time) >= QUANTUM)
     {
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
@@ -242,7 +241,7 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
 void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 {
     // se nao tem nenhum processo na CPU e a fila de prontos nao esta vazia
-    if (k->current_process == NULL && !queue_empty(k->runqueue) && get_current_time(*slice_time))
+    if (k->current_process == NULL && !queue_empty(k->runqueue))
     {
 
         // Pega o próximo processo da fila
@@ -262,7 +261,7 @@ void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 
 void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
 {
-     if (k->current_process != NULL && !queue_empty(k->runqueue) && get_current_time(*slice_time) >= QUANTUM)
+     if (k->current_process != NULL && !queue_empty(k->runqueue) && get_current_time(*slice_time)>= QUANTUM)
     {
         PCB * next_process=queue_remove_min(k->runqueue,0);
         if(is_priority_p1_over_p2(next_process,k->current_process)){
@@ -325,13 +324,13 @@ void kernel_run_simulation(Kernel *k)
     }
     //contador de fatia de tempo
     struct timeval slice_time;
-    // Enquanto todos os processos não estiverem no estado finalizado
     gettimeofday(&slice_time, NULL);
+    //Enquanto todos os processos não estiverem no estado finalizado
     while (finished_processes < k->nprocesses)
     {
         // adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e
         // o tempo alcançou o start_time do processo
-        if (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time))
+        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time))
         {
             PCB *p = k->pcb_list[process_index];
             queue_add(k->runqueue, p);
