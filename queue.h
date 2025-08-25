@@ -43,3 +43,5 @@ void queue_destroy(Queue *q);
 PCB *queue_peek(Queue *q);
 
 int queue_size(Queue *q);
+
+PCB *queue_peek_at(Queue *q, int index);

@@ -178,3 +178,12 @@ PCB *queue_peek(Queue *q) {
 int queue_size(Queue *q) {
     return q->nItens;
 }
+
+PCB *queue_peek_at(Queue *q, int index) {
+    if (queue_empty(q) || index < 0 || index >= q->nItens) {
+        return NULL;
+    }
+
+    int actual_index = (q->first + index) % q->size;
+    return q->data[actual_index];
+}
