@@ -345,7 +345,7 @@ void *multi_routine(void *args)
 void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finished_processes)
 {
     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é valido
-    if (!queue_empty(k->runqueue) && multi_get_current_time(*slice_time))
+    if (!queue_empty(k->runqueue))
     {
         // Pega o próximo processo da fila sem remover
         PCB *next_process = queue_peek(k->runqueue);
@@ -363,11 +363,11 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
                     allocated_cpus++;
                 }
             }
+            // printf("oi\n");
         }
 
         // Se o processo foi alocado em pelo menos uma CPU, remove da fila e sinaliza as threads
         if (allocated_cpus > 0) {
-            // nao posso fazer desse jeito (ele pode precisar de outra cpu dps)
             queue_remove(k->runqueue);
 
             pthread_mutex_t *mutex = get_pcb_mutex(next_process);
@@ -384,8 +384,13 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
 
         int cpu_livre = 0;
         for(int i=0; i<2; i++){
-            if(k->current_process[i] == NULL){
-                cpu_livre++;
+            if(k->current_process[i] != NULL){
+                pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
+                pthread_mutex_lock(mutex);
+                if(pcb_get_state(k->current_process[i]) != RUNNING){
+                    cpu_livre++;
+                }
+                pthread_mutex_unlock(mutex);    
             }
         }
 
@@ -394,32 +399,44 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
         }
 
         //se tiver uma cpu livre que pode ser alocada ao processo que esta em running
-        if(cpu_livre == 1){
+        if(cpu_livre == 1){ 
             printf("CPU livre detectada, tentando alocar para processo em running\n");
             int tem_um_running = 0;
             for (int i = 0; i < 2; i++) {
-                if (k->current_process[i] != NULL) {
-                    //encontra o processo em running
-                    next_process_caso = k->current_process[i];
-                    tem_um_running++;
+                if(k->current_process[i] != NULL){
+                    pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
+                    pthread_mutex_lock(mutex);
+                    if(pcb_get_state(k->current_process[i]) == RUNNING){
+                        //encontra o processo em running
+                        next_process_caso = k->current_process[i];
+                        tem_um_running++;
+                    }
+                    pthread_mutex_unlock(mutex);
                 }
             }
 
             if(tem_um_running == 1){
                 for(int i=0; i<2; i++){
-                    if(k->current_process[i] == NULL){
-                        k->current_process[i] = next_process_caso;
-                        multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
-                        printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
-
-                        pthread_mutex_t *mutex = get_pcb_mutex(next_process_caso);
-                        pthread_cond_t *cv = pcb_get_cv(next_process_caso);
-                        
+                    if(k->current_process[i] != NULL){
+                        pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
                         pthread_mutex_lock(mutex);
-                        pcb_change_state(next_process_caso, RUNNING);
-                        pthread_cond_broadcast(cv);
+                        if(pcb_get_state(k->current_process[i]) != RUNNING){
+                            k->current_process[i] = next_process_caso;
+                            multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
+                            printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
+
+                            pthread_mutex_t *mutex = get_pcb_mutex(next_process_caso);
+                            pthread_cond_t *cv = pcb_get_cv(next_process_caso);
+                            
+                            pthread_mutex_lock(mutex);
+                            pcb_change_state(next_process_caso, RUNNING);
+                            pthread_cond_broadcast(cv);
+                            pthread_mutex_unlock(mutex);
+                            // break;
+                        }else{
+                            multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
+                        }
                         pthread_mutex_unlock(mutex);
-                        break;
                     }
                 }
             }
@@ -504,7 +521,7 @@ void multi_kernel_run_simulation(Kernel *k)
 
         // adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e
         // o tempo alcançou o start_time do processo
-        if (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= multi_get_current_time(start_time))
+        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= multi_get_current_time(start_time))
         {
             PCB *p = k->pcb_list[process_index];
             queue_add(k->runqueue, p);
@@ -529,8 +546,6 @@ void multi_kernel_run_simulation(Kernel *k)
         for(int i=0; i<2; i++){
             if (k->current_process[i] != NULL)
             {
-                //retira da fila de prontos quando terminar
-                // queue_remove(k->runqueue);
                 // libera a CPU
                 pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
                 pthread_mutex_lock(mutex);
