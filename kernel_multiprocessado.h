@@ -11,7 +11,7 @@ void multi_kernel_read_input_file(char * input_path,Kernel *k);
 void multi_kernel_print_output_file(Kernel *k);
 void multi_kernel_schedule(Kernel *k);
 void multi_kernel_print(Kernel *k);
-// void multi_kernel_RR_schedule(Kernel *k,struct timeval *slice_time);
+void multi_kernel_RR_schedule(Kernel *k);
 void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finished_processes);
 // void multi_kernel_prio_schedule(Kernel *k,struct timeval *slice_time);
 Kernel *multi_kernel_create(SchedulerType scheduler_type, int quantum);

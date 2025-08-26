@@ -33,6 +33,7 @@ struct kernel
     int generator_done;
     //processo que está utilizando a CPU no momento
     PCB *current_process[2];
+    struct timeval slice_time[2]; // rastreador de tempo por CPU
     int quantum;
     int log_count;
     int log_capacity;
@@ -53,6 +54,9 @@ Kernel *multi_kernel_create(SchedulerType scheduler_type, int quantum)
     // k->current_process = NULL;
     k->current_process[0] = NULL;
     k->current_process[1] = NULL;
+    k->slice_time[0] = (struct timeval){0};
+    k->slice_time[1] = (struct timeval){0};
+
     k->quantum = quantum;
     pthread_mutex_init(&k->mutex_log, NULL);
     pthread_mutex_init(&k->mutex_queue, NULL);
@@ -251,6 +255,66 @@ void *multi_routine(void *args)
 //     }   
 // }
 
+void multi_kernel_RR_schedule(Kernel *k){
+    // logica para lidar com a preempcao dos processos nas cpu
+    for (int i = 0; i < 2; i++)
+    {
+        // se a cpu não esta vazia e o processo em running ultrapassou o quantum preempta o processo
+        if (k->current_process[i] != NULL && multi_get_current_time(k->slice_time[i]) >= k->quantum)
+        {
+            PCB *process_to_preempt = k->current_process[i];
+            pthread_mutex_t *mutex = get_pcb_mutex(process_to_preempt);
+            pthread_cond_t *cv = pcb_get_cv(process_to_preempt);
+
+            pthread_mutex_lock(mutex);
+
+            // Verifica se o processo ainda está em execução e tem tempo restante
+            if (pcb_get_state(process_to_preempt) == RUNNING && get_remaining_time(process_to_preempt) > 0)
+            {
+                // Preempta o processo - muda o estado para READY e o adiciona ao final da fila de prontos
+                pcb_change_state(process_to_preempt, READY);
+                queue_add(k->runqueue, process_to_preempt);
+
+                // Libera a CPU
+                k->current_process[i] = NULL;
+
+                // Sinaliza as threads do processo que ele foi preemptado
+                pthread_cond_broadcast(cv);
+            }
+            pthread_mutex_unlock(mutex);
+        }
+    }
+
+    // logica para alocar novos processos nas CPUs livres
+    for (int i = 0; i < 2; i++)
+    {
+        // Se a CPU está livre e a fila de prontos não está vazia
+        if (k->current_process[i] == NULL && !queue_empty(k->runqueue))
+        {
+            // Pega o próximo processo da fila
+            PCB *next_process = queue_remove(k->runqueue);
+            k->current_process[i] = next_process;
+
+            pthread_mutex_t *mutex = get_pcb_mutex(next_process);
+            pthread_cond_t *cv = pcb_get_cv(next_process);
+
+            // Atualiza o estado do processo para RUNNING e registra o log
+            multi_add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms // processador %d", my_get_pid(next_process), k->quantum, i);
+
+            pthread_mutex_lock(mutex);
+            pcb_change_state(next_process, RUNNING);
+
+            // Reinicia o tempo de fatia para a CPU
+            gettimeofday(&(k->slice_time[i]), NULL);
+
+            // Sinaliza para as threads do processo começarem a executar
+            pthread_cond_broadcast(cv);
+            pthread_mutex_unlock(mutex);
+        }
+        
+    }
+}
+
 void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finished_processes)
 {
     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é valido
@@ -286,7 +350,7 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
             pthread_mutex_unlock(mutex);
         }
 
-    // entra nesse caso se a fila estiver vazia mas nem todos os processos finalizaram (pra ser se tem uma cpu livre)
+    // entra nesse caso se a fila estiver vazia mas nem todos os processos finalizaram (pra ver se tem uma cpu livre)
     }else if (queue_empty(k->runqueue)) {
         PCB *next_process_caso = NULL;
 
@@ -432,11 +496,11 @@ void multi_kernel_run_simulation(Kernel *k)
         {
             multi_kernel_FCFS_schedule(k,&slice_time, finished_processes);
         }
-        // else if (k->scheduler_type == RR)
-        // {
+        else if (k->scheduler_type == RR)
+        {
             
-        //     kernel_RR_schedule(k, &slice_time);
-        // }
+            multi_kernel_RR_schedule(k);
+        }
         // else
         // {
         //     kernel_prio_schedule(k,&slice_time);
