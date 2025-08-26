@@ -159,11 +159,11 @@ void *multi_routine(void *args)
         }
         sub_remaining_time(p, time_to_each_thread);
         //verificacao se cada thread esta executando como uma entidade própria
-        printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-            my_get_pid(p),
-            tcb_get_thread_index(tcb),
-            time_to_each_thread,
-            get_remaining_time(p));
+        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
+        //     my_get_pid(p),
+        //     tcb_get_thread_index(tcb),
+        //     time_to_each_thread,
+        //     get_remaining_time(p));
 
         pthread_mutex_unlock(mutex);
         usleep(time_to_each_thread * 1000);
@@ -186,8 +186,6 @@ void *multi_routine(void *args)
 
         if (get_remaining_time(p) <= 0 && pcb_get_state(p) != FINISHED)
         {
-            // printf("Entrou aqui\n");
-            // queue_remove(k->runqueue);
             pcb_change_state(p, FINISHED);
             //libera as threads que estiverem dentro do primeiro while
             //pois o processo ja executou todas as suas threads
@@ -205,7 +203,6 @@ void *multi_routine(void *args)
 
         pthread_mutex_unlock(mutex);
         if(pid!=-1){
-            // printf("Saiu aqui\n");
             multi_add_log_entry(k, "[%s] Processo PID %d finalizado", out,pid);
         }
     }
@@ -353,17 +350,15 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
         // Verifica se há CPUs livres para alocar o processo
         int allocated_cpus = 0;
         for (int i = 0; i < 2; i++) {
-            // Apenas aloca o processo se a CPU estiver livre
             if (k->current_process[i] == NULL) {
                 if(allocated_cpus == 0 || queue_size(k->runqueue) == 1)
                 {
                     k->current_process[i] = next_process;
                     multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process), i);
-                    printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process), i);
+                    // printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process), i);
                     allocated_cpus++;
                 }
             }
-            // printf("oi\n");
         }
 
         // Se o processo foi alocado em pelo menos uma CPU, remove da fila e sinaliza as threads
@@ -379,7 +374,8 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
             pthread_mutex_unlock(mutex);
         }
 
-    }else if (queue_empty(k->runqueue)) { //fila vazia mas nem todos os processos finalizaram (verifica dps se tem 1 cpu ativa)
+    // entra nesse caso se a fila estiver vazia mas nem todos os processos finalizaram (pra ser se tem uma cpu livre)
+    }else if (queue_empty(k->runqueue)) {
         PCB *next_process_caso = NULL;
 
         int cpu_livre = 0;
@@ -394,13 +390,9 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
             }
         }
 
-        if(cpu_livre > 0){
-            printf("CpuLivre: %d\n", cpu_livre);
-        }
-
         //se tiver uma cpu livre que pode ser alocada ao processo que esta em running
         if(cpu_livre == 1){ 
-            printf("CPU livre detectada, tentando alocar para processo em running\n");
+            // printf("CPU livre detectada, tentando alocar para processo em running\n");
             int tem_um_running = 0;
             for (int i = 0; i < 2; i++) {
                 if(k->current_process[i] != NULL){
@@ -423,7 +415,7 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
                         if(pcb_get_state(k->current_process[i]) != RUNNING){
                             k->current_process[i] = next_process_caso;
                             multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
-                            printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
+                            // printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
 
                             pthread_mutex_t *mutex = get_pcb_mutex(next_process_caso);
                             pthread_cond_t *cv = pcb_get_cv(next_process_caso);
@@ -432,7 +424,6 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
                             pcb_change_state(next_process_caso, RUNNING);
                             pthread_cond_broadcast(cv);
                             pthread_mutex_unlock(mutex);
-                            // break;
                         }else{
                             multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
                         }
@@ -516,9 +507,6 @@ void multi_kernel_run_simulation(Kernel *k)
 
     while (finished_processes < k->nprocesses)
     {
-        //printa o numero de processos
-        // printf("Numero de processos finalizados: %d\n", finished_processes);
-
         // adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e
         // o tempo alcançou o start_time do processo
         while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= multi_get_current_time(start_time))
@@ -551,11 +539,11 @@ void multi_kernel_run_simulation(Kernel *k)
                 pthread_mutex_lock(mutex);
                 if (pcb_get_state(k->current_process[i]) == FINISHED)
                 {
-                    printf("Processo PID %d finalizado\n", my_get_pid(k->current_process[i]));
+                    // printf("Processo PID %d finalizado\n", my_get_pid(k->current_process[i]));
                     k->current_process[i] = NULL;
                     
                     finished_processes++;
-                    printf("Processos finalizados: %d\n", finished_processes);
+                    // printf("Processos finalizados: %d\n", finished_processes);
                 }
                 pthread_mutex_unlock(mutex);
             }
