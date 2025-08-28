@@ -6,7 +6,7 @@
     * Autor: Débora Azevedo (2022101541) e Felipe Carpes (2022102425)
 */
 
-#pragma once
+
 #include "pcb.h"
 
 typedef struct tcb TCB;

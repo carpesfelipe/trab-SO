@@ -337,9 +337,10 @@ void kernel_run_simulation(Kernel *k)
     //Enquanto todos os processos não estiverem no estado finalizado
     while (finished_processes < k->nprocesses)
     {
+        long current_time=get_current_time(start_time);
         // adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e
         // o tempo alcançou o start_time do processo
-        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= get_current_time(start_time))
+        while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= current_time)
         {
             PCB *p = k->pcb_list[process_index];
             queue_add(k->runqueue, p);
@@ -390,7 +391,6 @@ void kernel_run_simulation(Kernel *k)
     }
     kernel_print_log(k);
 
-    printf("Escalonador terminou execução de todos processos\n");
 }
 void kernel_destroy(Kernel *k)
 {
@@ -471,10 +471,16 @@ void kernel_print_log(Kernel *k)
 {
     if (!k || !k->log_buffer)
         return;
-
-    for (int i = 0; i < k->log_count; i++)
-    {
-        printf("%s\n", k->log_buffer[i]);
+    FILE * file=fopen("log_execucao_minikernel.txt","w");
+    if(file){
+        for (int i = 0; i < k->log_count; i++)
+        {
+            fprintf(file,"%s\n", k->log_buffer[i]);
+        }
+        fprintf(file,"Escalonador terminou execução de todos processos\n");
+    }else{
+        printf("erro ao abrir arquivo de escrita\n");
+        exit(1);
     }
 }
 
