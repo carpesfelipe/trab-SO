@@ -51,7 +51,6 @@ Kernel *multi_kernel_create(SchedulerType scheduler_type, int quantum)
     }
     k->pcb_list = NULL;
     k->generator_done = 0;
-    // k->current_process = NULL;
     k->current_process[0] = NULL;
     k->current_process[1] = NULL;
     k->quantum = quantum;
@@ -134,11 +133,9 @@ void *multi_routine(void *args)
     while (1)
     {
         pthread_mutex_lock(mutex);
-        // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
-        // a thread deve se bloquear
+        // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez a thread deve se bloquear
         while (pcb_get_state(p) != FINISHED &&
                (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
-        // while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
         {
             pthread_cond_wait(cv, mutex);
         }
@@ -152,13 +149,13 @@ void *multi_routine(void *args)
 
         int time_to_each_thread = get_process_len(p) / get_num_threads(p);
 
-        // Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
-        // se não subtraimos um quantum
+        // Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time, se não subtraimos um quantum
         if (time_to_each_thread > QUANTUM)
         {
             time_to_each_thread = QUANTUM;
         }
         sub_remaining_time(p, time_to_each_thread);
+
         // verificacao se cada thread esta executando como uma entidade própria
         //  printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
         //      my_get_pid(p),
@@ -234,11 +231,6 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
                 pcb_change_state(process_to_preempt, READY);
                 queue_add(k->runqueue, process_to_preempt);
 
-                // printa lista
-                //  queue_print(k->runqueue);
-
-                // printf("[PID %d] foi preemptado na CPU %d\n", my_get_pid(process_to_preempt), i);
-
                 // Libera a CPU
                 k->current_process[i] = NULL;
 
@@ -252,6 +244,7 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
     // logica para alocar novos processos nas CPUs livres
     for (int i = 0; i < 2; i++)
     {
+        // Se a CPU est livre e a fila de prontos não está vazia
         if (k->current_process[i] == NULL && !queue_empty(k->runqueue))
         {
             // Se a CPU está livre e a fila de prontos não está vazia
@@ -270,10 +263,12 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
 
             multi_add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms // processador %d", my_get_pid(next_process), k->quantum, i);
         }
-        else
+        else // Se a CPU esta livre e a fila de prontos está vazia (entao ele vai verificar se ainda ha um processo em running, para alocar na cpu livre)
         {
             if (k->current_process[i] == NULL && queue_empty(k->runqueue))
             {
+
+                //busca pelo processo que esta em running e armazena em next_process_add_duas_cpu
                 PCB *next_process_add_duas_cpu = NULL;
                 for (int j = 0; j < 2; j++)
                 {
@@ -349,6 +344,7 @@ void multi_kernel_FCFS_schedule(Kernel *k, struct timeval *slice_time, int finis
     {
         PCB *next_process_caso = NULL;
 
+        // verifica a quantidade de cpus livres
         int cpu_livre = 0;
         for (int i = 0; i < 2; i++)
         {
@@ -364,10 +360,10 @@ void multi_kernel_FCFS_schedule(Kernel *k, struct timeval *slice_time, int finis
             }
         }
 
-        // se tiver uma cpu livre que pode ser alocada ao processo que esta em running
+        // se tiver uma cpu livre que pode ser alocada ao processo que esta em running (so entra em cpu_livre == 1 pq significa que ainda ha um processo em running)
         if (cpu_livre == 1)
         {
-            // printf("CPU livre detectada, tentando alocar para processo em running\n");
+            // encontra qual o processo que esta em running e adiciona a next_process_caso
             int tem_um_running = 0;
             for (int i = 0; i < 2; i++)
             {
@@ -385,6 +381,7 @@ void multi_kernel_FCFS_schedule(Kernel *k, struct timeval *slice_time, int finis
                 }
             }
 
+            // encontrando o processo ativo, ele deve ser alocado na CPU livre
             if (tem_um_running == 1)
             {
                 for (int i = 0; i < 2; i++)
@@ -397,7 +394,6 @@ void multi_kernel_FCFS_schedule(Kernel *k, struct timeval *slice_time, int finis
                         {
                             k->current_process[i] = next_process_caso;
                             multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
-                            // printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
 
                             pthread_mutex_t *mutex = get_pcb_mutex(next_process_caso);
                             pthread_cond_t *cv = pcb_get_cv(next_process_caso);
