@@ -25,31 +25,32 @@ void kernel_read_input_file(char * input_path,Kernel *k);
 // Funcao para executar o escalonamento RR
 void kernel_RR_schedule(Kernel *k,struct timeval *slice_time);
 
-// Funcao para executar o escalonamento FCFS
+// Executa algoritmo de FCFS, executando um processo inteiro antes de olhar o próximo
 void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time);
 
-// Funcao para executar o escalonamento por prioridade
+// Executa algoritmo de prioridade preemptiva acordando as threads quando necessário
 void kernel_prio_schedule(Kernel *k,struct timeval *slice_time);
 
-// Funcao para criar o Kernel
-Kernel *kernel_create(SchedulerType scheduler_type, int quantum);
+// Inicializa variáveis do kernel
+Kernel *kernel_create();
 
-// Funcao para destruir o Kernel
+// Libera recursos alocados para o kernel
 void kernel_destroy(Kernel *k);
 
 // Funcao para ordenar os processos pelo tempo de chegada
 void kernel_sort_by_start_time(Kernel *k);
 
-// Funcao para executar a simulacao do Kernel
+// Insere processos na fila de prontos de acordo com o seu tempo de chegada, definindo qual algoritmo
+//de escalonamento será executado
 void kernel_run_simulation(Kernel *k);
 
 // Funcao para imprimir a fila de prontos
 void kernel_print_runqueue(Kernel *k);
 
-// Funcao para obter o tempo atual
+//Dado um valor de tempo inicial, retorna o tempo que se passou em ms
 int get_current_time(struct timeval start_time);
 
-// Funcao para imprimir o log do Kernel
+// Funcao para imprimir o log do Kernel em um arquivo
 void kernel_print_log(Kernel *k);
 
 // Funcao para adicionar uma entrada ao log do Kernel

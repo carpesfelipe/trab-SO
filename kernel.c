@@ -18,7 +18,6 @@
 #include <sys/time.h>
 #include "queue.h"
 #include <string.h>
-// typedef PCB **Queue;
 typedef struct
 {
     TCB *tcb;
@@ -33,7 +32,6 @@ struct kernel
     pthread_mutex_t mutex_log;
     PCB **pcb_list;
     int nprocesses;
-    int generator_done;
     //processo que está utilizando a CPU no momento
     PCB *current_process;
     int quantum;
@@ -43,7 +41,7 @@ struct kernel
     Queue *runqueue;
 };
 
-Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
+Kernel *kernel_create()
 {
     Kernel *k = (Kernel *)calloc(1, sizeof(Kernel));
     if (!k)
@@ -52,9 +50,7 @@ Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
         return NULL;
     }
     k->pcb_list = NULL;
-    k->generator_done = 0;
     k->current_process = NULL;
-    k->quantum = quantum;
     pthread_mutex_init(&k->mutex_log, NULL);
     pthread_mutex_init(&k->mutex_queue, NULL);
     k->log_buffer = (char **)calloc(LOG_INITIAL_CAPACITY, sizeof(char *));
@@ -66,8 +62,7 @@ Kernel *kernel_create(SchedulerType scheduler_type, int quantum)
         free(k);
         return NULL;
     }
-
-    k->scheduler_type = scheduler_type;
+    k->scheduler_type = FCFS;
     k->runqueue = NULL;
     return k;
 }
@@ -160,6 +155,7 @@ void *routine(void *args)
         }
         sub_remaining_time(p, time_to_each_thread);
         pthread_mutex_unlock(mutex);
+        //simula trabalho da thread por 500ms
         usleep(QUANTUM * 1000);
 
         pthread_mutex_lock(mutex);
@@ -322,7 +318,9 @@ void kernel_run_simulation(Kernel *k)
         for (int j = 0; j < num_threads; j++)
         {
             ThreadArgs *args = calloc(1, sizeof(ThreadArgs));
+            //o kernel é passado como argumento para poder adicionar as mensagens no log
             args->k = k;
+            //cada thread utiliza o tcb para saber a qual processo ela pertence e qual o seu index
             args->tcb = tcb_create(p, j);
             pthread_create(&threads_ids[j], NULL, &routine, args);
         }
@@ -330,10 +328,11 @@ void kernel_run_simulation(Kernel *k)
     //contador de fatia de tempo
     struct timeval slice_time;
     gettimeofday(&slice_time, NULL);
+    
     //enquanto todos os processos não estiverem no estado finalizado
     while (finished_processes < k->nprocesses)
     {
-        long current_time=get_current_time(start_time);
+        int current_time=get_current_time(start_time);
         // adiciona processos na fila de prontos enquanto todos os processos não foram adicionados e
         // o tempo alcançou o start_time do processo
         while (process_index < k->nprocesses && get_start_time(k->pcb_list[process_index]) <= current_time)
@@ -371,7 +370,7 @@ void kernel_run_simulation(Kernel *k)
         }
         
         // Simula a passagem de tempo para que o loop não ocorra várias vezes sem acontecer nada
-        usleep(100);
+        usleep(500);
         
     }
     //espera todas as threads terminarem antes de sair
