@@ -17,8 +17,10 @@
 #include "queue.h"
 
 int main(int argc, char *argv[]) {
+    // Cria o kernel
     Kernel *kernel=kernel_create(FCFS,500);
-    //processos criados e inicializados
+
+    // Le o arquivo de entrada
     kernel_read_input_file(argv[1],kernel);
 
     //Loop para simular o tempo e mover os processos para a runqueue
