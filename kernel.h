@@ -44,7 +44,7 @@ void kernel_sort_by_start_time(Kernel *k);
 void kernel_run_simulation(Kernel *k);
 
 // Funcao para imprimir a fila de prontos
-void kernel_printa_runqueue(Kernel *k);
+void kernel_print_runqueue(Kernel *k);
 
 // Funcao para obter o tempo atual
 int get_current_time(struct timeval start_time);
