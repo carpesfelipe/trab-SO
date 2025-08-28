@@ -28,13 +28,11 @@ typedef struct
 struct kernel
 {
     char **log_buffer;
-    pthread_mutex_t mutex_queue;
     pthread_mutex_t mutex_log;
     PCB **pcb_list;
     int nprocesses;
     //processo que está utilizando a CPU no momento
     PCB *current_process;
-    int quantum;
     int log_count;
     int log_capacity;
     SchedulerType scheduler_type;
@@ -52,7 +50,6 @@ Kernel *kernel_create()
     k->pcb_list = NULL;
     k->current_process = NULL;
     pthread_mutex_init(&k->mutex_log, NULL);
-    pthread_mutex_init(&k->mutex_queue, NULL);
     k->log_buffer = (char **)calloc(LOG_INITIAL_CAPACITY, sizeof(char *));
     k->log_count = 0;
     k->log_capacity = LOG_INITIAL_CAPACITY;
@@ -75,11 +72,9 @@ void kernel_read_input_file(char *input_path, Kernel *k)
         perror("Failed to open input file");
         return;
     }
-    int nprocesses = 0;
-    fscanf(file, "%d", &nprocesses);
-    k->nprocesses = nprocesses;
+    fscanf(file, "%d", &k->nprocesses);
 
-    k->pcb_list = (PCB **)calloc(nprocesses, sizeof(PCB *));
+    k->pcb_list = (PCB **)calloc(k->nprocesses, sizeof(PCB *));
 
     if (!k->pcb_list)
     {
@@ -88,7 +83,7 @@ void kernel_read_input_file(char *input_path, Kernel *k)
         return;
     }
 
-    for (int i = 0; i < nprocesses; i++)
+    for (int i = 0; i < k->nprocesses; i++)
     {
         int process_len, prio, num_threads, start_time;
         fscanf(file, "%d", &process_len);
@@ -144,6 +139,7 @@ void *routine(void *args)
             pthread_mutex_unlock(mutex);
             break;
         }
+        //printf("PID %d executando thread %d\n",my_get_pid(p),tcb_get_thread_index(tcb));
         //tempo a ser subtraido do tempo restante do processo
         int time_to_each_thread = get_process_len(p)/get_num_threads(p);
         
@@ -215,13 +211,13 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
             queue_add(k->runqueue, k->current_process);
             // CPU fica vazia
             k->current_process = NULL;
+            gettimeofday(slice_time, NULL);
             //acorda threads sinalizando que o processo foi preemptado
             pthread_cond_broadcast(cv);
         }
         pthread_mutex_unlock(mutex);
         
-    }
-    if (!queue_empty(k->runqueue) && k->current_process == NULL)
+    }else if (!queue_empty(k->runqueue) && k->current_process == NULL)
     {
         // Pega o próximo processo da fila
         PCB *next_process = queue_remove(k->runqueue);
@@ -238,7 +234,12 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
         //  Sinaliza para as threads do processo começarem a executar já q o estado é RUNNING
         pthread_cond_broadcast(cv);
         pthread_mutex_unlock(mutex);
-    }   
+     }
+    // else if(queue_empty(k->runqueue) && k->current_process!=NULL){
+    //     if(pcb_get_state(k->current_process)==RUNNING){
+    //         add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms", my_get_pid(k->current_process), QUANTUM);
+    //     }
+    // }   
 }
 void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 {
@@ -367,10 +368,9 @@ void kernel_run_simulation(Kernel *k)
                 finished_processes++;
             }
             pthread_mutex_unlock(mutex);
+          
         }
-        
-        // Simula a passagem de tempo para que o loop não ocorra várias vezes sem acontecer nada
-        usleep(500);
+               
         
     }
     //espera todas as threads terminarem antes de sair
