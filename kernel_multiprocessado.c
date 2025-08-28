@@ -17,7 +17,8 @@ typedef struct
 } ThreadArgs;
 #define LOG_INITIAL_CAPACITY 100
 
-typedef struct {
+typedef struct
+{
     Kernel *kernel;
     int cpu_id;
     pthread_mutex_t *runqueue_mutex;
@@ -31,7 +32,7 @@ struct kernel
     PCB **pcb_list;
     int nprocesses;
     int generator_done;
-    //processo que está utilizando a CPU no momento
+    // processo que está utilizando a CPU no momento
     PCB *current_process[2];
     int quantum;
     int log_count;
@@ -121,7 +122,7 @@ void multi_kernel_sort_by_start_time(Kernel *k)
 
 void *multi_routine(void *args)
 {
-    //struct utilizado para passar o TCB e o kernel
+    // struct utilizado para passar o TCB e o kernel
     ThreadArgs *arg = (ThreadArgs *)args;
     Kernel *k = arg->k;
     TCB *tcb = arg->tcb;
@@ -134,9 +135,9 @@ void *multi_routine(void *args)
     {
         pthread_mutex_lock(mutex);
         // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
-        //a thread deve se bloquear 
-         while (pcb_get_state(p) != FINISHED &&
-        (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
+        // a thread deve se bloquear
+        while (pcb_get_state(p) != FINISHED &&
+               (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
         // while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
         {
             pthread_cond_wait(cv, mutex);
@@ -149,28 +150,28 @@ void *multi_routine(void *args)
             break;
         }
 
-        int time_to_each_thread = get_process_len(p)/get_num_threads(p);
-        
-        //Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
-        //se não subtraimos um quantum
+        int time_to_each_thread = get_process_len(p) / get_num_threads(p);
+
+        // Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
+        // se não subtraimos um quantum
         if (time_to_each_thread > QUANTUM)
         {
             time_to_each_thread = QUANTUM;
         }
         sub_remaining_time(p, time_to_each_thread);
-        //verificacao se cada thread esta executando como uma entidade própria
-        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-        //     my_get_pid(p),
-        //     tcb_get_thread_index(tcb),
-        //     time_to_each_thread,
-        //     get_remaining_time(p));
+        // verificacao se cada thread esta executando como uma entidade própria
+        //  printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
+        //      my_get_pid(p),
+        //      tcb_get_thread_index(tcb),
+        //      time_to_each_thread,
+        //      get_remaining_time(p));
 
         pthread_mutex_unlock(mutex);
         usleep(time_to_each_thread * 1000);
 
         pthread_mutex_lock(mutex);
         char out[10];
-        int pid=-1;
+        int pid = -1;
         if (k->scheduler_type == FCFS)
         {
             strcpy(out, "FCFS");
@@ -187,31 +188,33 @@ void *multi_routine(void *args)
         if (get_remaining_time(p) <= 0 && pcb_get_state(p) != FINISHED)
         {
             pcb_change_state(p, FINISHED);
-            //libera as threads que estiverem dentro do primeiro while
-            //pois o processo ja executou todas as suas threads
+            // libera as threads que estiverem dentro do primeiro while
+            // pois o processo ja executou todas as suas threads
             pthread_cond_broadcast(cv);
-            pid=my_get_pid(p);
-        }else if (pcb_get_state(p) == RUNNING) 
+            pid = my_get_pid(p);
+        }
+        else if (pcb_get_state(p) == RUNNING)
         {
             // Calcula o índice da próxima thread
             int num_threads = get_num_threads(p);
             int next_thread_index = (pcb_get_active_thread_index(p) + 1) % num_threads;
             pcb_set_active_thread_index(p, next_thread_index);
-            //Acorda as outras threads para que a próxima na fila possa executar
+            // Acorda as outras threads para que a próxima na fila possa executar
             pthread_cond_broadcast(cv);
         }
 
         pthread_mutex_unlock(mutex);
-        if(pid!=-1){
-            multi_add_log_entry(k, "[%s] Processo PID %d finalizado", out,pid);
+        if (pid != -1)
+        {
+            multi_add_log_entry(k, "[%s] Processo PID %d finalizado", out, pid);
         }
     }
     free(tcb);
     return NULL;
 }
 
-
-void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time){
+void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
+{
     // logica para lidar com a preempcao dos processos nas cpu
     for (int i = 0; i < 2; i++)
     {
@@ -231,8 +234,8 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time){
                 pcb_change_state(process_to_preempt, READY);
                 queue_add(k->runqueue, process_to_preempt);
 
-                //printa lista
-                // queue_print(k->runqueue);
+                // printa lista
+                //  queue_print(k->runqueue);
 
                 // printf("[PID %d] foi preemptado na CPU %d\n", my_get_pid(process_to_preempt), i);
 
@@ -249,40 +252,47 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time){
     // logica para alocar novos processos nas CPUs livres
     for (int i = 0; i < 2; i++)
     {
-       if (k->current_process[i] == NULL && !queue_empty(k->runqueue)) {
+        if (k->current_process[i] == NULL && !queue_empty(k->runqueue))
+        {
             // Se a CPU está livre e a fila de prontos não está vazia
             PCB *next_process = queue_remove(k->runqueue);
             k->current_process[i] = next_process;
 
             pthread_mutex_lock(get_pcb_mutex(next_process));
             pcb_change_state(next_process, RUNNING);
-            
+
             // Reinicia o tempo de fatia para a CPU
-            gettimeofday(slice_time, NULL); 
+            gettimeofday(slice_time, NULL);
 
             // Sinaliza para as threads do processo começarem a executar
             pthread_cond_broadcast(pcb_get_cv(next_process));
             pthread_mutex_unlock(get_pcb_mutex(next_process));
 
             multi_add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms // processador %d", my_get_pid(next_process), k->quantum, i);
-        }else{
-            if(k->current_process[i] == NULL && queue_empty(k->runqueue)){
+        }
+        else
+        {
+            if (k->current_process[i] == NULL && queue_empty(k->runqueue))
+            {
                 PCB *next_process_add_duas_cpu = NULL;
-                for(int j=0; j<2; j++){
-                    if(k->current_process[j] != NULL){
+                for (int j = 0; j < 2; j++)
+                {
+                    if (k->current_process[j] != NULL)
+                    {
                         next_process_add_duas_cpu = k->current_process[j];
                     }
                 }
 
-                //adiciona o processo que esta rodando apenas em uma cpu nas duas (isso pq a fila de prontos esta vazia)
-                if (next_process_add_duas_cpu != NULL) {
+                // adiciona o processo que esta rodando apenas em uma cpu nas duas (isso pq a fila de prontos esta vazia)
+                if (next_process_add_duas_cpu != NULL)
+                {
                     k->current_process[i] = next_process_add_duas_cpu;
 
                     pthread_mutex_lock(get_pcb_mutex(next_process_add_duas_cpu));
                     pcb_change_state(next_process_add_duas_cpu, RUNNING);
-                    
+
                     // Reinicia o tempo de fatia para a CPU
-                    gettimeofday(slice_time, NULL); 
+                    gettimeofday(slice_time, NULL);
 
                     // Sinaliza para as threads do processo começarem a executar
                     pthread_cond_broadcast(pcb_get_cv(next_process_add_duas_cpu));
@@ -292,22 +302,24 @@ void multi_kernel_RR_schedule(Kernel *k, struct timeval *slice_time){
                 }
             }
         }
-        
     }
 }
 
-void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finished_processes)
+void multi_kernel_FCFS_schedule(Kernel *k, struct timeval *slice_time, int finished_processes)
 {
     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é valido
-    if (!queue_empty(k->runqueue)){
+    if (!queue_empty(k->runqueue))
+    {
         // Pega o próximo processo da fila sem remover
         PCB *next_process = queue_peek(k->runqueue);
-        
+
         // Verifica se há CPUs livres para alocar o processo
         int allocated_cpus = 0;
-        for (int i = 0; i < 2; i++) {
-            if (k->current_process[i] == NULL) {
-                if(allocated_cpus == 0 || queue_size(k->runqueue) == 1)
+        for (int i = 0; i < 2; i++)
+        {
+            if (k->current_process[i] == NULL)
+            {
+                if (allocated_cpus == 0 || queue_size(k->runqueue) == 1)
                 {
                     k->current_process[i] = next_process;
                     multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process), i);
@@ -318,44 +330,54 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
         }
 
         // Se o processo foi alocado em pelo menos uma CPU, remove da fila e sinaliza as threads
-        if (allocated_cpus > 0) {
+        if (allocated_cpus > 0)
+        {
             queue_remove(k->runqueue);
 
             pthread_mutex_t *mutex = get_pcb_mutex(next_process);
             pthread_cond_t *cv = pcb_get_cv(next_process);
-            
+
             pthread_mutex_lock(mutex);
             pcb_change_state(next_process, RUNNING);
             pthread_cond_broadcast(cv);
             pthread_mutex_unlock(mutex);
         }
 
-    // entra nesse caso se a fila estiver vazia mas nem todos os processos finalizaram (pra ver se tem uma cpu livre)
-    }else if (queue_empty(k->runqueue)) {
+        // entra nesse caso se a fila estiver vazia mas nem todos os processos finalizaram (pra ver se tem uma cpu livre)
+    }
+    else if (queue_empty(k->runqueue))
+    {
         PCB *next_process_caso = NULL;
 
         int cpu_livre = 0;
-        for(int i=0; i<2; i++){
-            if(k->current_process[i] != NULL){
+        for (int i = 0; i < 2; i++)
+        {
+            if (k->current_process[i] != NULL)
+            {
                 pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
                 pthread_mutex_lock(mutex);
-                if(pcb_get_state(k->current_process[i]) != RUNNING){
+                if (pcb_get_state(k->current_process[i]) != RUNNING)
+                {
                     cpu_livre++;
                 }
-                pthread_mutex_unlock(mutex);    
+                pthread_mutex_unlock(mutex);
             }
         }
 
-        //se tiver uma cpu livre que pode ser alocada ao processo que esta em running
-        if(cpu_livre == 1){ 
+        // se tiver uma cpu livre que pode ser alocada ao processo que esta em running
+        if (cpu_livre == 1)
+        {
             // printf("CPU livre detectada, tentando alocar para processo em running\n");
             int tem_um_running = 0;
-            for (int i = 0; i < 2; i++) {
-                if(k->current_process[i] != NULL){
+            for (int i = 0; i < 2; i++)
+            {
+                if (k->current_process[i] != NULL)
+                {
                     pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
                     pthread_mutex_lock(mutex);
-                    if(pcb_get_state(k->current_process[i]) == RUNNING){
-                        //encontra o processo em running
+                    if (pcb_get_state(k->current_process[i]) == RUNNING)
+                    {
+                        // encontra o processo em running
                         next_process_caso = k->current_process[i];
                         tem_um_running++;
                     }
@@ -363,24 +385,30 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
                 }
             }
 
-            if(tem_um_running == 1){
-                for(int i=0; i<2; i++){
-                    if(k->current_process[i] != NULL){
+            if (tem_um_running == 1)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    if (k->current_process[i] != NULL)
+                    {
                         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
                         pthread_mutex_lock(mutex);
-                        if(pcb_get_state(k->current_process[i]) != RUNNING){
+                        if (pcb_get_state(k->current_process[i]) != RUNNING)
+                        {
                             k->current_process[i] = next_process_caso;
                             multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
                             // printf("[PID %d] alocado na CPU %d\n", my_get_pid(next_process_caso), i);
 
                             pthread_mutex_t *mutex = get_pcb_mutex(next_process_caso);
                             pthread_cond_t *cv = pcb_get_cv(next_process_caso);
-                            
+
                             pthread_mutex_lock(mutex);
                             pcb_change_state(next_process_caso, RUNNING);
                             pthread_cond_broadcast(cv);
                             pthread_mutex_unlock(mutex);
-                        }else{
+                        }
+                        else
+                        {
                             multi_add_log_entry(k, "[FCFS] Executando processo PID %d // processador %d", my_get_pid(next_process_caso), i);
                         }
                         pthread_mutex_unlock(mutex);
@@ -388,73 +416,89 @@ void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finish
                 }
             }
         }
-
     }
 }
 
-void multi_kernel_prio_schedule(Kernel *k, struct timeval *slice_time) { 
-    for (int i = 0; i < 2; i++) {
-        if (k->current_process[i] != NULL && multi_get_current_time(*slice_time) >= QUANTUM) { 
-            PCB *next_process = queue_remove_min(k->runqueue, 0); 
-            //se next_process diferente de nulo quer dizer que a fila não está vazia 
-            if (next_process != NULL && is_priority_p1_over_p2(next_process, k->current_process[i])) { 
-                pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]); 
-                pthread_mutex_lock(mutex); 
-                if (pcb_get_state(k->current_process[i]) == RUNNING && get_remaining_time(k->current_process[i]) > 0) { 
-                    pcb_change_state(k->current_process[i], READY); 
-                    queue_add(k->runqueue, k->current_process[i]); 
-                    k->current_process[i] = NULL; 
-                } pthread_mutex_unlock(mutex); 
-            } 
-        } // Se a CPU estiver vazio 
-        if (k->current_process[i] == NULL) { //removemos um item da fila já que temos uma cpu livre //printf("oii\n"); //caso a fila esteja vazia a função retorna NULL 
-            PCB *next_process = queue_remove_min(k->runqueue, 1); 
-            int other_cpu = -1; 
-            if (i == 0){ 
+void multi_kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
+{
+    for (int i = 0; i < 2; i++)
+    {
+        if (k->current_process[i] != NULL && multi_get_current_time(*slice_time) >= QUANTUM)
+        {
+            PCB *next_process = queue_remove_min(k->runqueue, 0);
+            // se next_process diferente de nulo quer dizer que a fila não está vazia
+            if (next_process != NULL && is_priority_p1_over_p2(next_process, k->current_process[i]))
+            {
+                pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[i]);
+                pthread_mutex_lock(mutex);
+                if (pcb_get_state(k->current_process[i]) == RUNNING && get_remaining_time(k->current_process[i]) > 0)
+                {
+                    pcb_change_state(k->current_process[i], READY);
+                    queue_add(k->runqueue, k->current_process[i]);
+                    k->current_process[i] = NULL;
+                }
+                pthread_mutex_unlock(mutex);
+            }
+        } // Se a CPU estiver vazio
+        if (k->current_process[i] == NULL)
+        { // removemos um item da fila já que temos uma cpu livre
+            // caso a fila esteja vazia a função retorna NULL
+            PCB *next_process = queue_remove_min(k->runqueue, 1);
+            int other_cpu = -1;
+            if (i == 0)
+            {
                 other_cpu = 1;
             }
-            else{ other_cpu = 0; } // Se não há processo pronto, pegar thread da outra cpu 
-            if(k->current_process[other_cpu] != NULL){ //se não houver ninguem na fila de prontos(next_process==NULL) e tiver outro processo rodando na cpu 
-                pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[other_cpu]); 
-                pthread_mutex_lock(mutex); 
-                if (next_process == NULL && pcb_get_state(k->current_process[other_cpu])==RUNNING) 
-                { 
-                    //pegamos o processo da outra cpu para dividir suas threads 
-                    next_process = k->current_process[other_cpu]; 
-                } pthread_mutex_lock(mutex); 
-            } if (next_process != NULL){ 
-                pthread_mutex_t *mutex=get_pcb_mutex(next_process); 
-                pthread_mutex_lock(mutex); 
-                if(pcb_get_state(next_process) == FINISHED) { 
-                    next_process = NULL; 
+            else
+            {
+                other_cpu = 0;
+            }
+            // Se não há processo pronto, pegar thread da outra cpu
+            if (k->current_process[other_cpu] != NULL)
+            { // se não houver ninguem na fila de prontos(next_process==NULL) e tiver outro processo rodando na cpu
+                pthread_mutex_t *mutex = get_pcb_mutex(k->current_process[other_cpu]);
+                pthread_mutex_lock(mutex);
+                if (next_process == NULL && pcb_get_state(k->current_process[other_cpu]) == RUNNING)
+                {
+                    // pegamos o processo da outra cpu para dividir suas threads
+                    next_process = k->current_process[other_cpu];
                 }
-                pthread_mutex_unlock(mutex); } //Se encontrou algum processo, aloca na CPU 
-                if (next_process != NULL && pcb_get_state(next_process)!=FINISHED) { 
-                    k->current_process[i] = next_process; 
-                    pthread_mutex_t *mutex = get_pcb_mutex(next_process); 
-                    pthread_cond_t *cv = pcb_get_cv(next_process); 
-                    printf("[PRIORITY] Executando processo PID %d prioridade %d // processador %d\n", my_get_pid(next_process), get_priority(next_process), i); 
-                    if(pcb_get_state(next_process)!=FINISHED){ 
-                        multi_add_log_entry(k, "[PRIORITY] Executando processo PID %d prioridade %d // processador %d", my_get_pid(next_process), get_priority(next_process), i); 
-                    } 
-                    pthread_mutex_lock(mutex); 
-                    pcb_change_state(next_process, RUNNING); 
-                    gettimeofday(slice_time, NULL); 
-                    pthread_cond_broadcast(cv); // acorda threads para execução 
-                    pthread_mutex_unlock(mutex); 
-                } 
-            } 
-    } 
+                pthread_mutex_lock(mutex);
+            }
+            if (next_process != NULL)
+            {
+                pthread_mutex_t *mutex = get_pcb_mutex(next_process);
+                pthread_mutex_lock(mutex);
+                if (pcb_get_state(next_process) == FINISHED)
+                {
+                    next_process = NULL;
+                }
+                pthread_mutex_unlock(mutex);
+            } // Se encontrou algum processo, aloca na CPU
+            if (next_process != NULL && pcb_get_state(next_process) != FINISHED)
+            {
+                k->current_process[i] = next_process;
+                pthread_mutex_t *mutex = get_pcb_mutex(next_process);
+                pthread_cond_t *cv = pcb_get_cv(next_process);
+                printf("[PRIORITY] Executando processo PID %d prioridade %d // processador %d\n", my_get_pid(next_process), get_priority(next_process), i);
+                pthread_mutex_lock(mutex);
+                pcb_change_state(next_process, RUNNING);
+                gettimeofday(slice_time, NULL);
+                pthread_cond_broadcast(cv); // acorda threads para execução
+                pthread_mutex_unlock(mutex);
+            }
+        }
+    }
 }
 
 void multi_kernel_run_simulation(Kernel *k)
 {
     int process_index = 0;
     int finished_processes = 0;
-    //contador para tempo de chegada dos processos
+    // contador para tempo de chegada dos processos
     struct timeval start_time;
     gettimeofday(&start_time, NULL);
-    //todas as threads são criadas mas só executam quando sinalizado pelo escalonador
+    // todas as threads são criadas mas só executam quando sinalizado pelo escalonador
     for (int i = 0; i < k->nprocesses; i++)
     {
         PCB *p = k->pcb_list[i];
@@ -468,7 +512,7 @@ void multi_kernel_run_simulation(Kernel *k)
             pthread_create(&threads_ids[j], NULL, &multi_routine, args);
         }
     }
-    //contador de fatia de tempo
+    // contador de fatia de tempo
     struct timeval slice_time;
     // Enquanto todos os processos não estiverem no estado finalizado
     gettimeofday(&slice_time, NULL);
@@ -483,10 +527,10 @@ void multi_kernel_run_simulation(Kernel *k)
             queue_add(k->runqueue, p);
             process_index++;
         }
-        
+
         if (k->scheduler_type == FCFS)
         {
-            multi_kernel_FCFS_schedule(k,&slice_time, finished_processes);
+            multi_kernel_FCFS_schedule(k, &slice_time, finished_processes);
         }
         else if (k->scheduler_type == RR)
         {
@@ -499,7 +543,8 @@ void multi_kernel_run_simulation(Kernel *k)
         // }
 
         // verifica se o processo atual terminou
-        for(int i=0; i<2; i++){
+        for (int i = 0; i < 2; i++)
+        {
             if (k->current_process[i] != NULL)
             {
                 // libera a CPU
@@ -509,17 +554,16 @@ void multi_kernel_run_simulation(Kernel *k)
                 {
                     // printf("Processo PID %d finalizado\n", my_get_pid(k->current_process[i]));
                     k->current_process[i] = NULL;
-                    
+
                     finished_processes++;
                     // printf("Processos finalizados: %d\n", finished_processes);
                 }
                 pthread_mutex_unlock(mutex);
             }
         }
-        
+
         // Simula a passagem de tempo para que o loop não ocorra várias vezes sem acontecer nada
         usleep(100);
-        
     }
     // Espera todas as threads terminarem antes de sair
     for (int i = 0; i < k->nprocesses; i++)
@@ -617,18 +661,20 @@ void multi_kernel_print_log(Kernel *k)
         return;
 
     FILE *saida = fopen("log_execucao_minikernel.txt", "w");
-    if (saida) {
+    if (saida)
+    {
         for (int i = 0; i < k->log_count; i++)
         {
             fprintf(saida, "%s\n", k->log_buffer[i]);
         }
-        fprintf(saida,"Escalonador terminou execução de todos processos\n");
+        fprintf(saida, "Escalonador terminou execução de todos processos\n");
         fclose(saida);
-    }else{
+    }
+    else
+    {
         printf("Erro ao abrir arquivo de log\n");
         exit(1);
     }
-
 }
 
 int multi_get_current_time(struct timeval start_time)

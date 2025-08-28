@@ -224,8 +224,6 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
         k->current_process = next_process;
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
         pthread_cond_t *cv = pcb_get_cv(k->current_process);
-        //printf("rodando pid %d\n",my_get_pid(next_process));
-        // Uma vez que o processo está estado RUNNING ele não volta pra ready pois não há preempcao
         add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms", my_get_pid(next_process), QUANTUM);
         pthread_mutex_lock(mutex);
         pcb_change_state(k->current_process, RUNNING);
@@ -235,11 +233,7 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
         pthread_cond_broadcast(cv);
         pthread_mutex_unlock(mutex);
      }
-    // else if(queue_empty(k->runqueue) && k->current_process!=NULL){
-    //     if(pcb_get_state(k->current_process)==RUNNING){
-    //         add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms", my_get_pid(k->current_process), QUANTUM);
-    //     }
-    // }   
+   
 }
 void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 {
@@ -285,8 +279,7 @@ void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
             pthread_mutex_unlock(mutex);
         }
         
-    }
-    if (k->current_process == NULL && !queue_empty(k->runqueue))
+    }else if (k->current_process == NULL && !queue_empty(k->runqueue))
     {
         
         PCB *next_process = queue_remove_min(k->runqueue,1);
@@ -475,6 +468,7 @@ void kernel_print_log(Kernel *k)
         printf("erro ao abrir arquivo de escrita\n");
         exit(1);
     }
+    fclose(file);
 }
 
 //Dado um valor de tempo inicial, calcula o tempo que se passou em ms
