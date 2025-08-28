@@ -139,9 +139,17 @@ void *multi_routine(void *args)
         pthread_mutex_lock(mutex);
         // Se o processo não estiver no estado running,finished ou não for o index da thread a ser executada da vez
         //a thread deve se bloquear 
-         while (pcb_get_state(p) != FINISHED &&
-        (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
-        // while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
+
+        //no FIFO funcionava assim:
+        //  while (pcb_get_state(p) != FINISHED &&
+        // (pcb_get_state(p) != RUNNING || tcb_get_thread_index(tcb) != pcb_get_active_thread_index(p)))
+        // // while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
+        // {
+        //     pthread_cond_wait(cv, mutex);
+        // }
+
+        //refatorando para o RR
+        while (pcb_get_state(p) != RUNNING && pcb_get_state(p) != FINISHED)
         {
             pthread_cond_wait(cv, mutex);
         }
@@ -153,21 +161,26 @@ void *multi_routine(void *args)
             break;
         }
 
-        int time_to_each_thread = get_process_len(p)/get_num_threads(p);
+        //estava sendo usado no FCFS:
+        // int time_to_each_thread = get_process_len(p)/get_num_threads(p);
         
-        //Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
-        //se não subtraimos um quantum
-        if (time_to_each_thread > QUANTUM)
-        {
-            time_to_each_thread = QUANTUM;
-        }
+        // //Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
+        // //se não subtraimos um quantum
+        // if (time_to_each_thread > QUANTUM)
+        // {
+        //     time_to_each_thread = QUANTUM;
+        // }
+
+        //modificando para o RR:
+        int time_to_each_thread = k->quantum;
+
         sub_remaining_time(p, time_to_each_thread);
         //verificacao se cada thread esta executando como uma entidade própria
-        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-        //     my_get_pid(p),
-        //     tcb_get_thread_index(tcb),
-        //     time_to_each_thread,
-        //     get_remaining_time(p));
+        printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
+            my_get_pid(p),
+            tcb_get_thread_index(tcb),
+            time_to_each_thread,
+            get_remaining_time(p));
 
         pthread_mutex_unlock(mutex);
         usleep(time_to_each_thread * 1000);
@@ -195,14 +208,15 @@ void *multi_routine(void *args)
             //pois o processo ja executou todas as suas threads
             pthread_cond_broadcast(cv);
             pid=my_get_pid(p);
-        }else if (pcb_get_state(p) == RUNNING) 
-        {
-            // Calcula o índice da próxima thread
-            int num_threads = get_num_threads(p);
-            int next_thread_index = (pcb_get_active_thread_index(p) + 1) % num_threads;
-            pcb_set_active_thread_index(p, next_thread_index);
-            //Acorda as outras threads para que a próxima na fila possa executar
-            pthread_cond_broadcast(cv);
+            //era usado pro FCFS, modificando p rodar o RR
+        // }else if (pcb_get_state(p) == RUNNING) 
+        // {
+        //     // Calcula o índice da próxima thread
+        //     int num_threads = get_num_threads(p);
+        //     int next_thread_index = (pcb_get_active_thread_index(p) + 1) % num_threads;
+        //     pcb_set_active_thread_index(p, next_thread_index);
+        //     //Acorda as outras threads para que a próxima na fila possa executar
+        //     pthread_cond_broadcast(cv);
         }
 
         pthread_mutex_unlock(mutex);
@@ -275,6 +289,11 @@ void multi_kernel_RR_schedule(Kernel *k){
                 pcb_change_state(process_to_preempt, READY);
                 queue_add(k->runqueue, process_to_preempt);
 
+                //printa lista
+                // queue_print(k->runqueue);
+
+                printf("[PID %d] foi preemptado na CPU %d\n", my_get_pid(process_to_preempt), i);
+
                 // Libera a CPU
                 k->current_process[i] = NULL;
 
@@ -288,28 +307,22 @@ void multi_kernel_RR_schedule(Kernel *k){
     // logica para alocar novos processos nas CPUs livres
     for (int i = 0; i < 2; i++)
     {
-        // Se a CPU está livre e a fila de prontos não está vazia
-        if (k->current_process[i] == NULL && !queue_empty(k->runqueue))
-        {
-            // Pega o próximo processo da fila
+       if (k->current_process[i] == NULL && !queue_empty(k->runqueue)) {
+            // Se a CPU está livre e a fila de prontos não está vazia
             PCB *next_process = queue_remove(k->runqueue);
             k->current_process[i] = next_process;
 
-            pthread_mutex_t *mutex = get_pcb_mutex(next_process);
-            pthread_cond_t *cv = pcb_get_cv(next_process);
-
-            // Atualiza o estado do processo para RUNNING e registra o log
-            multi_add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms // processador %d", my_get_pid(next_process), k->quantum, i);
-
-            pthread_mutex_lock(mutex);
+            pthread_mutex_lock(get_pcb_mutex(next_process));
             pcb_change_state(next_process, RUNNING);
-
+            
             // Reinicia o tempo de fatia para a CPU
             gettimeofday(&(k->slice_time[i]), NULL);
 
             // Sinaliza para as threads do processo começarem a executar
-            pthread_cond_broadcast(cv);
-            pthread_mutex_unlock(mutex);
+            pthread_cond_broadcast(pcb_get_cv(next_process));
+            pthread_mutex_unlock(get_pcb_mutex(next_process));
+
+            multi_add_log_entry(k, "[RR] Executando processo PID %d com quantum %dms // processador %d", my_get_pid(next_process), k->quantum, i);
         }
         
     }
@@ -318,8 +331,7 @@ void multi_kernel_RR_schedule(Kernel *k){
 void multi_kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time, int finished_processes)
 {
     // Verifica se a fila de prontos não está vazia e se o tempo de fatia de tempo é valido
-    if (!queue_empty(k->runqueue))
-    {
+    if (!queue_empty(k->runqueue)){
         // Pega o próximo processo da fila sem remover
         PCB *next_process = queue_peek(k->runqueue);
         
@@ -515,7 +527,7 @@ void multi_kernel_run_simulation(Kernel *k)
                 pthread_mutex_lock(mutex);
                 if (pcb_get_state(k->current_process[i]) == FINISHED)
                 {
-                    // printf("Processo PID %d finalizado\n", my_get_pid(k->current_process[i]));
+                    printf("Processo PID %d finalizado\n", my_get_pid(k->current_process[i]));
                     k->current_process[i] = NULL;
                     
                     finished_processes++;
