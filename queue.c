@@ -1,3 +1,11 @@
+/*
+    * Biblioteca para manipulação de filas circulares
+    * 
+    * Esta biblioteca fornece funções para criar, manipular e destruir filas, além de verificar se estão cheias ou vazias, adicionar e remover elementos, e imprimir os elementos da fila.
+    * 
+    * Autor: Débora Azevedo (2022101541) e Felipe Carpes (2022102425)
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "queue.h"

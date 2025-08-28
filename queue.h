@@ -3,7 +3,7 @@
     * 
     * Esta biblioteca fornece funções para criar, manipular e destruir filas, além de verificar se estão cheias ou vazias, adicionar e remover elementos, e imprimir os elementos da fila.
     * 
-    * Autor: Débora Azevedo e Felipe Carpes
+    * Autor: Débora Azevedo (2022101541) e Felipe Carpes (2022102425)
 */
 
 #pragma once
@@ -37,11 +37,15 @@ PCB * queue_get_first(Queue* q);
 
 //retorna o menor elemento, caso o remove=0 e remove o item da fila caso contrario
 PCB * queue_remove_min(Queue * q,int remove);
-// destroi a fila e libera a memoria alocada (AINDA FALTA FUNCAO P LIBERAR OS PCB'S)
+
+// destroi a fila e libera a memoria alocada 
 void queue_destroy(Queue *q);
 
+// retorna o primeiro elemento da fila sem remove-lo
 PCB *queue_peek(Queue *q);
 
+// retorna o tamanho da fila
 int queue_size(Queue *q);
 
+// retorna o elemento na posição index da fila sem remove-lo
 PCB *queue_peek_at(Queue *q, int index);

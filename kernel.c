@@ -1,3 +1,12 @@
+/*
+    * Biblioteca para manipulacao do Kernel para um sistema monoprocessado (apenas uma cpu)
+    * 
+    * Esta biblioteca fornece funções para criar, manipular e destruir o Kernel, além de obter informações sobre os processos
+    * 
+    * Autor: Débora Azevedo (2022101541) e Felipe Carpes (2022102425)
+*/
+
+
 #define _GNU_SOURCE // Define esta macro para habilitar extensões GNU
 
 #include "pcb.h"

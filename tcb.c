@@ -1,3 +1,11 @@
+/*
+    * Biblioteca para manipulação de TCBs (Thread Control Blocks)
+    * 
+    * Esta biblioteca fornece funções para criar, manipular e destruir TCBs, além de obter informações sobre as threads associadas a um processo
+    * 
+    * Autor: Débora Azevedo (2022101541) e Felipe Carpes (2022102425)
+*/
+
 #include "tcb.h"
 
 struct tcb
