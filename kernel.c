@@ -120,6 +120,7 @@ void kernel_sort_by_start_time(Kernel *k)
     }
 }
 
+//função que simula o trabalho das threads
 void *routine(void *args)
 {
     //struct utilizado para passar o TCB e o kernel
@@ -148,28 +149,22 @@ void *routine(void *args)
             pthread_mutex_unlock(mutex);
             break;
         }
-
+        //tempo a ser subtraido do tempo restante do processo
         int time_to_each_thread = get_process_len(p)/get_num_threads(p);
         
         //Se o tempo de execução restante for menor que o quantum devemos subtrair esse valor do remaining time,
-        //se não subtraimos um quantum
+        //se não, subtraimos um quantum
         if (time_to_each_thread > QUANTUM)
         {
             time_to_each_thread = QUANTUM;
         }
         sub_remaining_time(p, time_to_each_thread);
-        //verificacao se cada thread esta executando como uma entidade própria
-        // printf("[PID %d] executou thread %d por %dms, faltam %dms\n",
-        //     my_get_pid(p),
-        //     tcb_get_thread_index(tcb),
-        //     time_to_each_thread,
-        //     get_remaining_time(p));
-
         pthread_mutex_unlock(mutex);
-        usleep(time_to_each_thread * 1000);
+        usleep(QUANTUM * 1000);
 
         pthread_mutex_lock(mutex);
         char out[10];
+        //variável para salvar o PID do processo que foi finalizado
         int pid=-1;
         if (k->scheduler_type == FCFS)
         {
@@ -186,7 +181,7 @@ void *routine(void *args)
         if (get_remaining_time(p) <= 0 && pcb_get_state(p) != FINISHED)
         {
             pcb_change_state(p, FINISHED);
-            //libera as threads que estiverem dentro do primeiro while
+            //acorda as threads que estiverem dentro do primeiro while
             //pois o processo ja executou todas as suas threads
             pthread_cond_broadcast(cv);
             pid=my_get_pid(p);
@@ -196,10 +191,11 @@ void *routine(void *args)
             int num_threads = get_num_threads(p);
             int next_thread_index = (pcb_get_active_thread_index(p) + 1) % num_threads;
             pcb_set_active_thread_index(p, next_thread_index);
-            //Acorda as outras threads para que a próxima na fila possa executar
+            //Acorda as outras threads para que a próxima na fila(de acordo com o indíce) possa executar
             pthread_cond_broadcast(cv);
         }
         pthread_mutex_unlock(mutex);
+        //adiciona no log fora do mutex do processo
         if(pid!=-1){
             add_log_entry(k, "[%s] Processo PID %d finalizado", out,pid);
         }
@@ -221,9 +217,10 @@ void kernel_RR_schedule(Kernel *k, struct timeval *slice_time)
         {
             pcb_change_state(k->current_process, READY);
             queue_add(k->runqueue, k->current_process);
-            k->current_process = NULL;
-            pthread_cond_broadcast(cv);
             // CPU fica vazia
+            k->current_process = NULL;
+            //acorda threads sinalizando que o processo foi preemptado
+            pthread_cond_broadcast(cv);
         }
         pthread_mutex_unlock(mutex);
         
@@ -258,7 +255,7 @@ void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
         k->current_process = next_process;
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
         pthread_cond_t *cv = pcb_get_cv(k->current_process);
-        // Uma vez que o processo está estado RUNNING ele não volta pra ready pois não há preempcao
+        // Uma vez que o processo está estado running ele não volta pra ready pois não há preempcao
         add_log_entry(k, "[FCFS] Executando processo PID %d", my_get_pid(next_process));
         pthread_mutex_lock(mutex);
         pcb_change_state(k->current_process, RUNNING);
@@ -270,23 +267,23 @@ void kernel_FCFS_schedule(Kernel *k,struct timeval *slice_time)
 
 void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
 {
+    //lógica de preempção
      if (k->current_process != NULL && !queue_empty(k->runqueue) && get_current_time(*slice_time)>= QUANTUM)
     {
         PCB * next_process=queue_remove_min(k->runqueue,0);
+        //Verifica se o processo tem maior prioridade
         if(is_priority_p1_over_p2(next_process,k->current_process)){
             pthread_mutex_t* mutex=get_pcb_mutex(k->current_process);
-            
-            //Verifica se o processo tem maior prioridade e se ele ainda possui remaining_time
-            
+            pthread_cond_t *cv =pcb_get_cv(k->current_process);
             pthread_mutex_lock(mutex);
+            //Verifica se há um processo rodando na CPU e se ele ainda possui "remaining_time"
             if(pcb_get_state(k->current_process)==RUNNING && get_remaining_time(k->current_process) > 0){
              
-                // processo que está na CPU é preemptado e adicionado ao final da fila de prontos caso ainda haja remaining_time
                 pcb_change_state(k->current_process, READY);
                 queue_add(k->runqueue, k->current_process);
                 // CPU agora é do processo de maior prioridade
                 k->current_process = NULL;
-                
+                pthread_cond_broadcast(cv);
             }
             pthread_mutex_unlock(mutex);
         }
@@ -299,7 +296,6 @@ void kernel_prio_schedule(Kernel *k, struct timeval *slice_time)
         k->current_process = next_process;
         pthread_mutex_t *mutex = get_pcb_mutex(k->current_process);
         pthread_cond_t *cv = pcb_get_cv(k->current_process);
-        // Uma vez que o processo está estado RUNNING ele não volta pra ready pois não há preempcao
         add_log_entry(k, "[PRIORITY] Executando processo PID %d prioridade %d", my_get_pid(next_process),get_priority(next_process));
         pthread_mutex_lock(mutex);
         pcb_change_state(k->current_process, RUNNING);
@@ -334,7 +330,7 @@ void kernel_run_simulation(Kernel *k)
     //contador de fatia de tempo
     struct timeval slice_time;
     gettimeofday(&slice_time, NULL);
-    //Enquanto todos os processos não estiverem no estado finalizado
+    //enquanto todos os processos não estiverem no estado finalizado
     while (finished_processes < k->nprocesses)
     {
         long current_time=get_current_time(start_time);
@@ -378,7 +374,7 @@ void kernel_run_simulation(Kernel *k)
         usleep(100);
         
     }
-    // Espera todas as threads terminarem antes de sair
+    //espera todas as threads terminarem antes de sair
     for (int i = 0; i < k->nprocesses; i++)
     {
         PCB *p = k->pcb_list[i];
@@ -415,13 +411,11 @@ void kernel_destroy(Kernel *k)
         }
 
         queue_destroy(k->runqueue);
-
-        // free(k->log_buffer);
         free(k);
     }
 }
 
-void kernel_printa_runqueue(Kernel *k)
+void kernel_print_runqueue(Kernel *k)
 {
     if (k && k->runqueue)
     {
@@ -484,6 +478,7 @@ void kernel_print_log(Kernel *k)
     }
 }
 
+//Dado um valor de tempo inicial, calcula o tempo que se passou em ms
 int get_current_time(struct timeval start_time)
 {
     struct timeval current_time;
