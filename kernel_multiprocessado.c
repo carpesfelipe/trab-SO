@@ -33,7 +33,6 @@ struct kernel
     int generator_done;
     //processo que está utilizando a CPU no momento
     PCB *current_process[2];
-    // struct timeval slice_time[2]; // rastreador de tempo por CPU
     int quantum;
     int log_count;
     int log_capacity;
@@ -54,9 +53,6 @@ Kernel *multi_kernel_create(SchedulerType scheduler_type, int quantum)
     // k->current_process = NULL;
     k->current_process[0] = NULL;
     k->current_process[1] = NULL;
-    // k->slice_time[0] = (struct timeval){0};
-    // k->slice_time[1] = (struct timeval){0};
-
     k->quantum = quantum;
     pthread_mutex_init(&k->mutex_log, NULL);
     pthread_mutex_init(&k->mutex_queue, NULL);
